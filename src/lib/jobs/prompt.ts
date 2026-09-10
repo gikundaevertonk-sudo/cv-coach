@@ -28,14 +28,14 @@ For each listing, decide how well it fits THIS candidate based on skills, senior
 - 40-59: a stretch or partial overlap
 - below 40: not a real fit
 
-Return a SINGLE JSON object, no markdown or commentary:
+Score EVERY listing you are given — do not drop any. Return a SINGLE JSON object, no markdown or commentary:
 {
   "matches": [
-    { "id": string, "matchScore": number, "whyItFits": string }  // whyItFits: one specific sentence
+    { "id": string, "matchScore": number, "whyItFits": string }
   ]
 }
 
-Only include listings scoring 45 or above. Use each listing's exact "id". If nothing fits, return { "matches": [] }.`;
+Use each listing's exact "id". "whyItFits" is one specific sentence — for a weak match, say plainly what is missing.`;
 
 export function buildRankUser(cv: string, jobs: JobListing[]): string {
   const lines = jobs

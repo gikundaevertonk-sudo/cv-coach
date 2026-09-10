@@ -18,7 +18,9 @@ import {
 
 const MAX_LISTINGS_TO_RANK = 25;
 const MAX_RESULTS = 12;
-const MIN_SCORE = 45;
+/** Drop listings the model scores below this; if that empties the list, keep the best few anyway. */
+const SCORE_FLOOR = 30;
+const MIN_TO_SHOW = 5;
 
 export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
   const provider = getProvider();
@@ -58,7 +60,10 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     limit: MAX_LISTINGS_TO_RANK,
   });
 
-  const query = { what, where: where || null };
+  const query = {
+    what,
+    where: input.remoteOnly ? "Remote" : where || null,
+  };
   const meta = {
     source: source.name,
     provider: provider.name,
@@ -85,25 +90,32 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
   }
 
   const byId = new Map(listings.map((j) => [j.id, j]));
-  const ranked: RankedJob[] = (ranking?.matches ?? [])
-    .filter((m) => m.matchScore >= MIN_SCORE && byId.has(m.id))
-    .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, MAX_RESULTS)
+  const scored = (ranking?.matches ?? [])
+    .filter((m) => byId.has(m.id))
     .map((m) => ({
       ...byId.get(m.id)!,
-      matchScore: Math.round(m.matchScore),
+      matchScore: Math.max(0, Math.min(100, Math.round(m.matchScore))),
       whyItFits: m.whyItFits.trim(),
-    }));
+    }))
+    .sort((a, b) => b.matchScore - a.matchScore);
 
-  // If ranking failed entirely, still show the board's top listings unscored.
-  const jobs =
-    ranked.length > 0
-      ? ranked
-      : listings.slice(0, MAX_RESULTS).map((j) => ({
-          ...j,
-          matchScore: 0,
-          whyItFits: "",
-        }));
+  let jobs: RankedJob[];
+  if (scored.length > 0) {
+    // Prefer listings above the floor; if none clear it, keep the best few so
+    // the user still sees the model's honest take.
+    const above = scored.filter((j) => j.matchScore >= SCORE_FLOOR);
+    jobs = (above.length > 0 ? above : scored.slice(0, MIN_TO_SHOW)).slice(
+      0,
+      MAX_RESULTS,
+    );
+  } else {
+    // Ranking failed entirely — show the board's top listings unscored.
+    jobs = listings.slice(0, MAX_RESULTS).map((j) => ({
+      ...j,
+      matchScore: 0,
+      whyItFits: "",
+    }));
+  }
 
   return { jobs, query, ...meta };
 }

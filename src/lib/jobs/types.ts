@@ -51,10 +51,27 @@ export class JobSearchError extends Error {
   }
 }
 
-/** Truncate a description to a tidy card-sized excerpt. */
+const ENTITIES: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&rsquo;": "’",
+  "&lsquo;": "‘",
+  "&rdquo;": "”",
+  "&ldquo;": "“",
+  "&mdash;": "—",
+  "&ndash;": "–",
+  "&hellip;": "…",
+};
+
+/** Strip HTML, decode common entities, and truncate to a card-sized excerpt. */
 export function toSnippet(raw: string, max = 320): string {
   const text = raw
     .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z#0-9]+;/gi, (m) => ENTITIES[m.toLowerCase()] ?? " ")
     .replace(/\s+/g, " ")
     .trim();
   if (text.length <= max) return text;

@@ -1,13 +1,14 @@
 import { createAdzunaSource } from "./adzuna";
 import { createJSearchSource } from "./jsearch";
+import { createTheMuseSource } from "./themuse";
 import { JobsConfigError, type JobSource } from "./types";
 
 export { JobsConfigError, JobSearchError } from "./types";
 export type { JobListing, JobQuery, JobSource } from "./types";
 
-type SourceName = "adzuna" | "jsearch";
+type SourceName = "themuse" | "adzuna" | "jsearch";
 
-const SOURCE_NAMES: readonly SourceName[] = ["adzuna", "jsearch"];
+const SOURCE_NAMES: readonly SourceName[] = ["themuse", "adzuna", "jsearch"];
 
 function resolveSourceName(): SourceName {
   const explicit = process.env.JOBS_PROVIDER?.trim().toLowerCase();
@@ -20,20 +21,21 @@ function resolveSourceName(): SourceName {
     );
   }
 
+  // Prefer a keyed source when configured; otherwise fall back to the
+  // keyless one so "Find jobs" works out of the box.
   if (process.env.RAPIDAPI_KEY) return "jsearch";
   if (process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY) return "adzuna";
-
-  throw new JobsConfigError(
-    "No job source configured. Set ADZUNA_APP_ID + ADZUNA_APP_KEY, or RAPIDAPI_KEY, in .env.local.",
-  );
+  return "themuse";
 }
 
-/**
- * Returns the configured job source. Throws {@link JobsConfigError} when the
- * environment is missing the keys it needs.
- */
+/** Returns the configured job source. */
 export function getJobSource(): JobSource {
-  return resolveSourceName() === "jsearch"
-    ? createJSearchSource()
-    : createAdzunaSource();
+  switch (resolveSourceName()) {
+    case "jsearch":
+      return createJSearchSource();
+    case "adzuna":
+      return createAdzunaSource();
+    case "themuse":
+      return createTheMuseSource();
+  }
 }
