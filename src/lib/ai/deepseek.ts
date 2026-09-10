@@ -11,9 +11,18 @@ function outputCap(model: string): number {
   return model.includes("reasoner") ? 64_000 : 8_192;
 }
 
+// Round-robin cursor, shared across requests in this process. `getProvider()`
+// rebuilds the provider per request, but this module-level counter persists, so
+// successive calls rotate through the configured keys.
+let cursor = 0;
+
 export function createDeepSeekProvider(): AIProvider {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
+  const keys = (process.env.DEEPSEEK_API_KEY ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  if (keys.length === 0) {
     throw new AIConfigError(
       "DEEPSEEK_API_KEY is not set. Add it to .env.local or switch AI_PROVIDER.",
     );
@@ -21,7 +30,7 @@ export function createDeepSeekProvider(): AIProvider {
 
   const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
   const baseURL = process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL;
-  const client = new OpenAI({ apiKey, baseURL });
+  const clients = keys.map((apiKey) => new OpenAI({ apiKey, baseURL }));
 
   // deepseek-reasoner (R1) rejects response_format; deepseek-chat honours it.
   const jsonMode = !model.includes("reasoner");
@@ -30,6 +39,15 @@ export function createDeepSeekProvider(): AIProvider {
     name: "deepseek",
     model,
     async generateJSON({ system, user, maxTokens = 16000 }: GenerateJSONParams) {
+      const idx = cursor % clients.length;
+      const client = clients[idx];
+      cursor = (cursor + 1) % 1_000_000;
+      if (process.env.DEEPSEEK_DEBUG) {
+        console.error(
+          `[deepseek] key #${idx + 1}/${clients.length} …${keys[idx].slice(-4)}`,
+        );
+      }
+
       const response = await client.chat.completions.create({
         model,
         max_tokens: Math.min(maxTokens, outputCap(model)),

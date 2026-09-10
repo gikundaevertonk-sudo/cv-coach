@@ -45,7 +45,7 @@ npm run dev                  # http://localhost:3000
 | `ANTHROPIC_MODEL`   | Optional. Default `claude-opus-5`.                               |
 | `OPENAI_API_KEY`    | Required for the OpenAI provider.                                |
 | `OPENAI_MODEL`      | Optional. Default `gpt-4o`.                                      |
-| `DEEPSEEK_API_KEY`  | Required for the DeepSeek provider.                              |
+| `DEEPSEEK_API_KEY`  | Required for the DeepSeek provider. One key, or several comma-separated to round-robin requests across them. |
 | `DEEPSEEK_MODEL`    | Optional. Default `deepseek-chat` (use `deepseek-reasoner` for R1). |
 | `DEEPSEEK_BASE_URL` | Optional. Default `https://api.deepseek.com`.                    |
 | `JOBS_PROVIDER`     | *Find jobs* only. `themuse`, `adzuna` or `jsearch`. Blank = auto-detect (JSearch if `RAPIDAPI_KEY` set, else Adzuna if its keys set, else The Muse). |
