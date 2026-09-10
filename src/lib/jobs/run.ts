@@ -1,0 +1,109 @@
+import { getProvider } from "@/lib/ai";
+import { parseModelJSON } from "@/lib/ai/json";
+import { getJobSource } from "./index";
+import {
+  DISTILL_SYSTEM,
+  RANK_SYSTEM,
+  REPAIR_PROMPT,
+  buildDistillUser,
+  buildRankUser,
+} from "./prompt";
+import {
+  rankingSchema,
+  searchTermsSchema,
+  type JobSearchResponse,
+  type JobsRequest,
+  type RankedJob,
+} from "./schema";
+
+const MAX_LISTINGS_TO_RANK = 25;
+const MAX_RESULTS = 12;
+const MIN_SCORE = 45;
+
+export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
+  const provider = getProvider();
+  const source = getJobSource();
+
+  // 1. CV -> search terms (one repair retry).
+  const distillUser = buildDistillUser(input.cv);
+  const distillFirst = await provider.generateJSON({
+    system: DISTILL_SYSTEM,
+    user: distillUser,
+    maxTokens: 500,
+  });
+  let terms = parseModelJSON(distillFirst, searchTermsSchema);
+  if (!terms) {
+    const retry = await provider.generateJSON({
+      system: DISTILL_SYSTEM,
+      user: `${distillUser}\n\n---\nYou previously replied:\n${distillFirst}\n\n${REPAIR_PROMPT}`,
+      maxTokens: 500,
+    });
+    terms = parseModelJSON(retry, searchTermsSchema);
+  }
+  if (!terms) {
+    throw new Error("Could not work out what to search for from that CV.");
+  }
+
+  const what = [...terms.titles.slice(0, 3), ...terms.keywords.slice(0, 4)]
+    .join(" ")
+    .trim();
+  const where = (input.location || terms.locationGuess || "").trim();
+
+  // 2. Query the job board.
+  const listings = await source.search({
+    what,
+    where: where || undefined,
+    remoteOnly: input.remoteOnly,
+    country: input.country || undefined,
+    limit: MAX_LISTINGS_TO_RANK,
+  });
+
+  const query = { what, where: where || null };
+  const meta = {
+    source: source.name,
+    provider: provider.name,
+    model: provider.model,
+  };
+
+  if (listings.length === 0) {
+    return { jobs: [], query, ...meta };
+  }
+
+  // 3. Score + explain each listing (one repair retry).
+  const rankUser = buildRankUser(input.cv, listings);
+  const rankFirst = await provider.generateJSON({
+    system: RANK_SYSTEM,
+    user: rankUser,
+  });
+  let ranking = parseModelJSON(rankFirst, rankingSchema);
+  if (!ranking) {
+    const retry = await provider.generateJSON({
+      system: RANK_SYSTEM,
+      user: `${rankUser}\n\n---\nYou previously replied:\n${rankFirst}\n\n${REPAIR_PROMPT}`,
+    });
+    ranking = parseModelJSON(retry, rankingSchema);
+  }
+
+  const byId = new Map(listings.map((j) => [j.id, j]));
+  const ranked: RankedJob[] = (ranking?.matches ?? [])
+    .filter((m) => m.matchScore >= MIN_SCORE && byId.has(m.id))
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, MAX_RESULTS)
+    .map((m) => ({
+      ...byId.get(m.id)!,
+      matchScore: Math.round(m.matchScore),
+      whyItFits: m.whyItFits.trim(),
+    }));
+
+  // If ranking failed entirely, still show the board's top listings unscored.
+  const jobs =
+    ranked.length > 0
+      ? ranked
+      : listings.slice(0, MAX_RESULTS).map((j) => ({
+          ...j,
+          matchScore: 0,
+          whyItFits: "",
+        }));
+
+  return { jobs, query, ...meta };
+}

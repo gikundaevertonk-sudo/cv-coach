@@ -91,6 +91,41 @@ export function Pencil({ className }: IconProps) {
   );
 }
 
+export function Briefcase({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="3" y="6.5" width="14" height="10" rx="1.5" />
+      <path d="M7.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 12.5 5v1.5M3 10.5h14" />
+    </svg>
+  );
+}
+
+export function MapPin({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M10 17s5.5-4.5 5.5-9A5.5 5.5 0 0 0 4.5 8c0 4.5 5.5 9 5.5 9Z" />
+      <circle cx="10" cy="8" r="1.75" />
+    </svg>
+  );
+}
+
+export function ExternalLink({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M11 4h5v5M16 4l-7 7M13 11.5V15a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 15V8a1.5 1.5 0 0 1 1.5-1.5H8" />
+    </svg>
+  );
+}
+
+export function Search({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="9" cy="9" r="5.5" />
+      <path d="m13.5 13.5 3 3" />
+    </svg>
+  );
+}
+
 export function Spinner({ className = "" }: IconProps) {
   return (
     <span
