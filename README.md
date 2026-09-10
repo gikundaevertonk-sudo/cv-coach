@@ -16,7 +16,7 @@ No accounts, no database — each analysis is a single request.
 ## Stack
 
 - **Next.js 16** (App Router, TypeScript, Tailwind CSS 4)
-- **Configurable AI provider** — Anthropic (Claude) or OpenAI, selected at runtime
+- **Configurable AI provider** — Anthropic (Claude), OpenAI, or DeepSeek, selected at runtime
 - **Zod** for request + model-output validation
 - **unpdf** for server-side PDF text extraction (CV / job description upload)
 
@@ -32,13 +32,18 @@ npm run dev                  # http://localhost:3000
 
 | Variable            | Purpose                                                              |
 | ------------------- | ------------------------------------------------------------------ |
-| `AI_PROVIDER`       | `anthropic` or `openai`. Blank = auto-detect from whichever key is set (prefers Anthropic). |
+| `AI_PROVIDER`       | `anthropic`, `openai`, or `deepseek`. Blank = auto-detect from whichever key is set (prefers Anthropic, then OpenAI, then DeepSeek). |
 | `ANTHROPIC_API_KEY` | Required for the Anthropic provider.                              |
 | `ANTHROPIC_MODEL`   | Optional. Default `claude-opus-5`.                               |
 | `OPENAI_API_KEY`    | Required for the OpenAI provider.                                |
 | `OPENAI_MODEL`      | Optional. Default `gpt-4o`.                                      |
+| `DEEPSEEK_API_KEY`  | Required for the DeepSeek provider.                              |
+| `DEEPSEEK_MODEL`    | Optional. Default `deepseek-chat` (use `deepseek-reasoner` for R1). |
+| `DEEPSEEK_BASE_URL` | Optional. Default `https://api.deepseek.com`.                    |
 
-You only need the key(s) for the provider you intend to use.
+You only need the key(s) for the provider you intend to use. DeepSeek uses an
+OpenAI-compatible API, so it runs through the OpenAI SDK with a different base
+URL.
 
 ## How it works
 
@@ -56,6 +61,7 @@ src/
       index.ts               # getProvider() — picks provider from env
       anthropic.ts           # Claude implementation
       openai.ts              # OpenAI implementation
+      deepseek.ts            # DeepSeek (OpenAI-compatible) implementation
       types.ts               # AIProvider interface
     analysis/
       schema.ts              # zod schemas: request + AnalysisResult
