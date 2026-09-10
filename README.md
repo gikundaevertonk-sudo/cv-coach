@@ -1,6 +1,7 @@
 # CV Coach
 
-An AI-powered web app: paste your **CV** and a **job description**, and get back
+An AI-powered web app: paste (or upload as PDF) your **CV** and a **job
+description**, and get back
 
 - an honest **fit score** and summary,
 - **strengths** grounded in your CV,
@@ -17,6 +18,7 @@ No accounts, no database — each analysis is a single request.
 - **Next.js 16** (App Router, TypeScript, Tailwind CSS 4)
 - **Configurable AI provider** — Anthropic (Claude) or OpenAI, selected at runtime
 - **Zod** for request + model-output validation
+- **unpdf** for server-side PDF text extraction (CV / job description upload)
 
 ## Setup
 
@@ -45,6 +47,7 @@ src/
   app/
     page.tsx                 # form + results (client component)
     api/analyze/route.ts     # POST: validate → runAnalysis → JSON
+    api/extract/route.ts     # POST multipart: PDF file → { text } (size/page guards)
   components/
     AnalysisView.tsx         # renders the analysis
     ScoreDial.tsx            # fit-score ring
@@ -58,11 +61,19 @@ src/
       schema.ts              # zod schemas: request + AnalysisResult
       prompt.ts              # system prompt + JSON contract
       run.ts                 # orchestration: call model, extract JSON, validate, one repair retry
+    extract/
+      pdf.ts                 # extractPdfText() — unpdf, whitespace cleanup, guards
 ```
 
 The model is asked for a single JSON object matching `analysisResultSchema`. The
 response is stripped of any markdown fencing, `JSON.parse`d, and validated with
 Zod. If validation fails, the model is asked once to repair its output.
+
+**PDF upload.** Each of the CV and job-description fields has an *Upload PDF*
+control. The file is posted to `/api/extract`, which rejects non-PDFs, files
+over 10 MB, and PDFs over 30 pages, then extracts text with `unpdf` and returns
+it for the user to review and edit. Image-only scans (no text layer) are
+rejected with a message to paste the text instead.
 
 ## Scripts
 
@@ -75,7 +86,6 @@ Zod. If validation fails, the model is asked once to repair its output.
 
 ## Roadmap ideas
 
-- PDF CV upload (parse to text server-side)
 - Streaming responses for faster perceived latency
 - Mock-interview loop: user answers a question, model critiques it
 - Accounts + saved analyses

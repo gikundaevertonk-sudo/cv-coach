@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AnalysisView } from "@/components/AnalysisView";
 import { MAX_FIELD_CHARS, type AnalysisResult } from "@/lib/analysis/schema";
 
@@ -148,6 +148,12 @@ export default function Home() {
   );
 }
 
+type PdfState =
+  | { status: "idle" }
+  | { status: "reading"; name: string }
+  | { status: "done"; name: string }
+  | { status: "error"; message: string };
+
 function Field({
   id,
   label,
@@ -161,20 +167,69 @@ function Field({
   onChange: (v: string) => void;
   placeholder: string;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [pdf, setPdf] = useState<PdfState>({ status: "idle" });
+
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // let the user re-pick the same file after an edit
+    if (!file) return;
+
+    setPdf({ status: "reading", name: file.name });
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/extract", { method: "POST", body });
+      const data: { text?: string; error?: string } = await res.json();
+
+      if (!res.ok || typeof data.text !== "string") {
+        setPdf({
+          status: "error",
+          message: data.error ?? "Could not read that PDF.",
+        });
+        return;
+      }
+      onChange(data.text);
+      setPdf({ status: "done", name: file.name });
+    } catch {
+      setPdf({
+        status: "error",
+        message: "Upload failed. Check your connection and try again.",
+      });
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-3">
         <label htmlFor={id} className="text-sm font-medium">
           {label}
         </label>
-        <span
-          className={`text-xs tabular-nums ${
-            value.length > MAX_FIELD_CHARS ? "text-rose-500" : "text-zinc-400"
-          }`}
-        >
-          {value.length.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}
-        </span>
+        <div className="flex items-baseline gap-3">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={pdf.status === "reading"}
+            className="text-xs font-medium text-zinc-500 underline underline-offset-4 hover:text-zinc-900 disabled:opacity-50 dark:hover:text-zinc-100"
+          >
+            {pdf.status === "reading" ? "Reading PDF…" : "Upload PDF"}
+          </button>
+          <span
+            className={`text-xs tabular-nums ${
+              value.length > MAX_FIELD_CHARS ? "text-rose-500" : "text-zinc-400"
+            }`}
+          >
+            {value.length.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}
+          </span>
+        </div>
       </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={onPickFile}
+      />
       <textarea
         id={id}
         value={value}
@@ -184,6 +239,15 @@ function Field({
         rows={8}
         className="resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-zinc-100"
       />
+      {pdf.status === "done" ? (
+        <p className="text-xs text-zinc-500">
+          Loaded text from <span className="font-medium">{pdf.name}</span> — check
+          it and edit as needed.
+        </p>
+      ) : null}
+      {pdf.status === "error" ? (
+        <p className="text-xs text-rose-500">{pdf.message}</p>
+      ) : null}
     </div>
   );
 }
