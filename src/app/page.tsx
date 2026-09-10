@@ -1,69 +1,189 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { AnalysisView } from "@/components/AnalysisView";
+import { MAX_FIELD_CHARS, type AnalysisResult } from "@/lib/analysis/schema";
+
+type ApiResponse =
+  | { result: AnalysisResult; provider: string; model: string }
+  | { error: string };
+
+const SAMPLE_CV = `Jordan Lee — Frontend Developer
+3 years building React apps at a fintech startup. Shipped a customer dashboard
+used by 40k users, led migration from CRA to Vite, mentored two juniors.
+Skills: React, TypeScript, Redux, Jest, REST APIs, Figma. BSc Computer Science.`;
+
+const SAMPLE_JD = `Senior Frontend Engineer
+We need someone strong in React and TypeScript to own our design system and
+component library. You will drive accessibility (WCAG 2.1 AA), set up visual
+regression testing, and work closely with design. Experience with Next.js,
+GraphQL, and leading projects across teams is expected.`;
 
 export default function Home() {
+  const [roleTitle, setRoleTitle] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [cv, setCv] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<
+    { result: AnalysisResult; provider: string; model: string } | null
+  >(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setData(null);
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleTitle, jobDescription, cv }),
+      });
+      const body: ApiResponse = await res.json();
+
+      if (!res.ok || "error" in body) {
+        setError("error" in body ? body.error : "Something went wrong.");
+        return;
+      }
+      setData(body);
+    } catch {
+      setError("Could not reach the server. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function loadSample() {
+    setRoleTitle("Senior Frontend Engineer");
+    setJobDescription(SAMPLE_JD);
+    setCv(SAMPLE_CV);
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
+      <header className="mb-10">
+        <h1 className="text-3xl font-semibold tracking-tight">CV Coach</h1>
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          Paste your CV and a job description. Get an honest fit analysis, a prep
+          plan, and practice questions tailored to both.
+        </p>
+      </header>
+
+      <form onSubmit={onSubmit} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="role" className="text-sm font-medium">
+            Role title
+          </label>
+          <input
+            id="role"
+            value={roleTitle}
+            onChange={(e) => setRoleTitle(e.target.value)}
+            placeholder="e.g. Senior Frontend Engineer"
+            required
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-zinc-100"
+          />
+        </div>
+
+        <Field
+          id="jd"
+          label="Job description"
+          value={jobDescription}
+          onChange={setJobDescription}
+          placeholder="Paste the full job posting, including requirements and responsibilities."
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <Field
+          id="cv"
+          label="Your CV"
+          value={cv}
+          onChange={setCv}
+          placeholder="Paste your CV as plain text."
+        />
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {loading ? "Analysing…" : "Analyse fit"}
+          </button>
+          <button
+            type="button"
+            onClick={loadSample}
+            disabled={loading}
+            className="text-sm text-zinc-500 underline underline-offset-4 hover:text-zinc-900 disabled:opacity-50 dark:hover:text-zinc-100"
           >
-            Documentation
-          </a>
+            Load sample
+          </button>
+          {loading ? (
+            <span className="text-sm text-zinc-500">
+              usually 20–60 seconds…
+            </span>
+          ) : null}
         </div>
-      </main>
+      </form>
+
+      {error ? (
+        <p className="mt-6 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+          {error}
+        </p>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-10 flex items-center gap-3 text-sm text-zinc-500">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-700 dark:border-t-zinc-100" />
+          Comparing your CV against the role…
+        </div>
+      ) : null}
+
+      {data ? (
+        <div className="mt-12">
+          <AnalysisView data={data.result} meta={data} />
+        </div>
+      ) : null}
+    </main>
+  );
+}
+
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between">
+        <label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </label>
+        <span
+          className={`text-xs tabular-nums ${
+            value.length > MAX_FIELD_CHARS ? "text-rose-500" : "text-zinc-400"
+          }`}
+        >
+          {value.length.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}
+        </span>
+      </div>
+      <textarea
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required
+        rows={8}
+        className="resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-zinc-100"
+      />
     </div>
   );
 }

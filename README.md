@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CV Coach
 
-## Getting Started
+An AI-powered web app: paste your **CV** and a **job description**, and get back
 
-First, run the development server:
+- an honest **fit score** and summary,
+- **strengths** grounded in your CV,
+- **gaps** ranked by severity, each with a concrete way to close it,
+- **ATS keywords** from the posting that are missing from your CV,
+- a phased **prep plan**,
+- **practice questions** (behavioural / technical / role-specific) with an answer framework for each,
+- **CV tweaks** targeted at this role.
+
+No accounts, no database — each analysis is a single request.
+
+## Stack
+
+- **Next.js 16** (App Router, TypeScript, Tailwind CSS 4)
+- **Configurable AI provider** — Anthropic (Claude) or OpenAI, selected at runtime
+- **Zod** for request + model-output validation
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # then edit .env.local
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment (`.env.local`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable            | Purpose                                                              |
+| ------------------- | ------------------------------------------------------------------ |
+| `AI_PROVIDER`       | `anthropic` or `openai`. Blank = auto-detect from whichever key is set (prefers Anthropic). |
+| `ANTHROPIC_API_KEY` | Required for the Anthropic provider.                              |
+| `ANTHROPIC_MODEL`   | Optional. Default `claude-opus-5`.                               |
+| `OPENAI_API_KEY`    | Required for the OpenAI provider.                                |
+| `OPENAI_MODEL`      | Optional. Default `gpt-4o`.                                      |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+You only need the key(s) for the provider you intend to use.
 
-## Learn More
+## How it works
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/
+    page.tsx                 # form + results (client component)
+    api/analyze/route.ts     # POST: validate → runAnalysis → JSON
+  components/
+    AnalysisView.tsx         # renders the analysis
+    ScoreDial.tsx            # fit-score ring
+  lib/
+    ai/
+      index.ts               # getProvider() — picks provider from env
+      anthropic.ts           # Claude implementation
+      openai.ts              # OpenAI implementation
+      types.ts               # AIProvider interface
+    analysis/
+      schema.ts              # zod schemas: request + AnalysisResult
+      prompt.ts              # system prompt + JSON contract
+      run.ts                 # orchestration: call model, extract JSON, validate, one repair retry
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The model is asked for a single JSON object matching `analysisResultSchema`. The
+response is stripped of any markdown fencing, `JSON.parse`d, and validated with
+Zod. If validation fails, the model is asked once to repair its output.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+| Command         | Description                    |
+| --------------- | ---------------------------- |
+| `npm run dev`   | Dev server                   |
+| `npm run build` | Production build + typecheck |
+| `npm start`     | Serve the production build   |
+| `npm run lint`  | ESLint                       |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Roadmap ideas
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- PDF CV upload (parse to text server-side)
+- Streaming responses for faster perceived latency
+- Mock-interview loop: user answers a question, model critiques it
+- Accounts + saved analyses
