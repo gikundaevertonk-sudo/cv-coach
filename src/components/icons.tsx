@@ -126,6 +126,14 @@ export function Search({ className }: IconProps) {
   );
 }
 
+export function ChevronDown({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="m5 7.5 5 5 5-5" />
+    </svg>
+  );
+}
+
 export function Spinner({ className = "" }: IconProps) {
   return (
     <span

@@ -75,6 +75,7 @@ src/
     api/tailor/route.ts      # POST: validate → runTailor → tailored CV + cover letter
   components/
     PdfCvInput.tsx           # primary CV input for "Find jobs": PDF dropzone first, paste as fallback
+    CountrySelect.tsx        # searchable, scrollable country combobox (~200 countries)
     Field.tsx                # textarea + "Upload PDF" control, used by "Analyse fit"
     AnalyseTab.tsx           # "Analyse fit" form + loading + results
     JobsTab.tsx              # "Find jobs" form + loading
@@ -83,6 +84,7 @@ src/
     ScoreDial.tsx            # fit-score ring
     icons.tsx                # inline SVG icon set
   lib/
+    countries.ts             # WORLD_COUNTRIES — ISO-3166 codes + names for CountrySelect
     ai/
       index.ts               # getProvider() — picks provider from env
       anthropic.ts openai.ts deepseek.ts   # provider implementations

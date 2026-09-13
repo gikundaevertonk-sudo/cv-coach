@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CountrySelect } from "@/components/CountrySelect";
 import { PdfCvInput } from "@/components/PdfCvInput";
 import { JobResults } from "@/components/JobResults";
 import { ArrowRight, Search, Spinner, Warning } from "@/components/icons";
@@ -13,29 +14,6 @@ const SAMPLE_CV = `Jordan Lee — Frontend Developer
 used by 40k users, led migration from CRA to Vite, mentored two juniors.
 Skills: React, TypeScript, Redux, Jest, REST APIs, Figma. BSc Computer Science.
 Based in Manchester, UK. Open to remote.`;
-
-// Countries Adzuna indexes (used when JOBS_PROVIDER resolves to Adzuna; other
-// sources search on the location text instead).
-const COUNTRIES: [string, string][] = [
-  ["", "Any / board default"],
-  ["au", "Australia"],
-  ["at", "Austria"],
-  ["br", "Brazil"],
-  ["ca", "Canada"],
-  ["fr", "France"],
-  ["de", "Germany"],
-  ["in", "India"],
-  ["it", "Italy"],
-  ["mx", "Mexico"],
-  ["nl", "Netherlands"],
-  ["nz", "New Zealand"],
-  ["pl", "Poland"],
-  ["sg", "Singapore"],
-  ["za", "South Africa"],
-  ["es", "Spain"],
-  ["gb", "United Kingdom"],
-  ["us", "United States"],
-];
 
 const LOADING_STEPS = [
   "Reading your CV…",
@@ -106,24 +84,16 @@ export function JobsTab() {
                 className="rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-violet-500"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="country" className="text-sm font-medium">
-                Country{" "}
-                <span className="font-normal text-zinc-400">— job board</span>
-              </label>
-              <select
-                id="country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                className="rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-violet-500"
-              >
-                {COUNTRIES.map(([code, label]) => (
-                  <option key={code} value={code}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CountrySelect
+              id="country"
+              label={
+                <>
+                  Country <span className="font-normal text-zinc-400">— job board</span>
+                </>
+              }
+              value={country}
+              onChange={setCountry}
+            />
           </div>
 
           <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
