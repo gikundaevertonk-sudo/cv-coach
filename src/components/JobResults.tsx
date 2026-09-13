@@ -1,4 +1,7 @@
-import { ExternalLink, MapPin, Sparkles } from "./icons";
+"use client";
+
+import { useState } from "react";
+import { Check, ExternalLink, MapPin, Pencil, Spinner, Sparkles, Warning } from "./icons";
 import type { JobSearchResponse, RankedJob } from "@/lib/jobs/schema";
 
 function ago(iso: string | null): string | null {
@@ -21,7 +24,7 @@ function scoreStyle(score: number): string {
   return "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300";
 }
 
-export function JobResults({ data }: { data: JobSearchResponse }) {
+export function JobResults({ data, cv }: { data: JobSearchResponse; cv: string }) {
   const { jobs, query } = data;
   const scored = jobs.some((j) => j.matchScore > 0);
 
@@ -59,7 +62,7 @@ export function JobResults({ data }: { data: JobSearchResponse }) {
 
       <ul className="flex flex-col gap-3">
         {jobs.map((job) => (
-          <JobCard key={job.id} job={job} />
+          <JobCard key={job.id} job={job} cv={cv} />
         ))}
       </ul>
 
@@ -72,8 +75,61 @@ export function JobResults({ data }: { data: JobSearchResponse }) {
   );
 }
 
-function JobCard({ job }: { job: RankedJob }) {
+type TailorState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "done"; tailoredCv: string; coverLetter: string; notes: string[] };
+
+function JobCard({ job, cv }: { job: RankedJob; cv: string }) {
   const posted = ago(job.postedAt);
+  const [tailor, setTailor] = useState<TailorState>({ status: "idle" });
+  const [expanded, setExpanded] = useState(true);
+
+  async function onTailor() {
+    setTailor({ status: "loading" });
+    try {
+      const res = await fetch("/api/tailor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cv,
+          job: {
+            title: job.title,
+            company: job.company,
+            location: job.location,
+            snippet: job.snippet,
+          },
+        }),
+      });
+      const body: {
+        tailoredCv?: string;
+        coverLetter?: string;
+        notes?: string[];
+        error?: string;
+      } = await res.json();
+
+      if (!res.ok || typeof body.tailoredCv !== "string") {
+        setTailor({
+          status: "error",
+          message: body.error ?? "Something went wrong.",
+        });
+        return;
+      }
+      setTailor({
+        status: "done",
+        tailoredCv: body.tailoredCv,
+        coverLetter: body.coverLetter ?? "",
+        notes: body.notes ?? [],
+      });
+      setExpanded(true);
+    } catch {
+      setTailor({
+        status: "error",
+        message: "Could not reach the server. Check your connection and try again.",
+      });
+    }
+  }
 
   return (
     <li className="rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:border-zinc-700">
@@ -126,15 +182,132 @@ function JobCard({ job }: { job: RankedJob }) {
         </p>
       ) : null}
 
-      <a
-        href={job.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-100"
-      >
-        View posting
-        <ExternalLink className="h-3.5 w-3.5" />
-      </a>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <a
+          href={job.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          View posting
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+
+        {tailor.status !== "done" ? (
+          <button
+            type="button"
+            onClick={onTailor}
+            disabled={tailor.status === "loading"}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 transition-colors hover:border-violet-300 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-950/60"
+          >
+            {tailor.status === "loading" ? (
+              <>
+                <Spinner className="h-3.5 w-3.5" />
+                Tailoring…
+              </>
+            ) : (
+              <>
+                <Pencil className="h-3.5 w-3.5" />
+                Tailor CV &amp; cover letter
+              </>
+            )}
+          </button>
+        ) : null}
+      </div>
+
+      {tailor.status === "error" ? (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-rose-500">
+          <Warning className="h-3.5 w-3.5 shrink-0" />
+          {tailor.message}
+        </p>
+      ) : null}
+
+      {tailor.status === "done" ? (
+        <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/40 p-4 dark:border-violet-900/50 dark:bg-violet-950/10">
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-violet-800 dark:text-violet-300">
+              <Check className="h-4 w-4 shrink-0" />
+              Tailored for this job
+            </p>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="text-xs font-medium text-violet-700 underline underline-offset-4 hover:text-violet-900 dark:text-violet-300 dark:hover:text-violet-100"
+            >
+              {expanded ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {expanded ? (
+            <div className="mt-3 flex flex-col gap-4">
+              <p className="text-xs text-violet-700/80 dark:text-violet-300/70">
+                AI-drafted from your CV — review facts and tone before sending.
+              </p>
+
+              {tailor.notes.length > 0 ? (
+                <ul className="flex flex-col gap-1 text-xs text-violet-800 dark:text-violet-300">
+                  {tailor.notes.map((n, i) => (
+                    <li key={i} className="flex gap-1.5">
+                      <span aria-hidden>•</span>
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <CopyableBlock label="Tailored CV" text={tailor.tailoredCv} rows={14} />
+              <CopyableBlock label="Cover letter" text={tailor.coverLetter} rows={10} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </li>
+  );
+}
+
+function CopyableBlock({
+  label,
+  text,
+  rows,
+}: {
+  label: string;
+  text: string;
+  rows: number;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API can be unavailable (e.g. insecure context) — the
+      // textarea below still lets the user select-all and copy manually.
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          {label}
+        </p>
+        <button
+          type="button"
+          onClick={copy}
+          className="text-xs font-medium text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-200"
+        >
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+      </div>
+      <textarea
+        readOnly
+        value={text}
+        rows={rows}
+        onFocus={(e) => e.currentTarget.select()}
+        className="mt-1.5 w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs leading-relaxed text-zinc-700 outline-none focus:border-violet-400 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+      />
+    </div>
   );
 }

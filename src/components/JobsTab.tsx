@@ -167,7 +167,7 @@ export function JobsTab() {
 
       {loading ? <SearchSkeleton /> : null}
 
-      {data ? <JobResults data={data} /> : null}
+      {data ? <JobResults data={data} cv={cv} /> : null}
     </>
   );
 }

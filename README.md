@@ -8,7 +8,9 @@ specific job description.
 paste text), and the model distills your CV into a search, pulls live
 vacancies from a job board (The Muse by default — no key — or Adzuna /
 JSearch), and scores each listing against your background with a one-line
-reason it fits.
+reason it fits. On any listing, click **Tailor CV & cover letter** and the
+model rewrites your CV for that specific job and drafts a matching cover
+letter — on demand, per job, never automatically.
 
 **Analyse fit** — CV vs. one job description:
 
@@ -70,13 +72,14 @@ src/
     api/analyze/route.ts     # POST: validate → runAnalysis → JSON
     api/extract/route.ts     # POST multipart: PDF file → { text } (size/page guards)
     api/jobs/route.ts        # POST: validate → findJobs → ranked listings
+    api/tailor/route.ts      # POST: validate → runTailor → tailored CV + cover letter
   components/
     PdfCvInput.tsx           # primary CV input for "Find jobs": PDF dropzone first, paste as fallback
     Field.tsx                # textarea + "Upload PDF" control, used by "Analyse fit"
     AnalyseTab.tsx           # "Analyse fit" form + loading + results
     JobsTab.tsx              # "Find jobs" form + loading
     AnalysisView.tsx         # renders the fit analysis
-    JobResults.tsx           # renders ranked job listings
+    JobResults.tsx           # renders ranked listings + per-job "Tailor CV & cover letter"
     ScoreDial.tsx            # fit-score ring
     icons.tsx                # inline SVG icon set
   lib/
@@ -94,6 +97,8 @@ src/
       themuse.ts adzuna.ts jsearch.ts   # JobSource implementations (normalised JobListing)
       types.ts schema.ts prompt.ts
       run.ts                 # distill CV → search → rank listings against the CV
+    tailor/
+      schema.ts prompt.ts run.ts           # tailor one CV + one job → { tailoredCv, coverLetter, notes }
 ```
 
 **Find jobs.** `findJobs()` runs three steps: (1) the model distills the CV into
@@ -104,6 +109,15 @@ score are returned, best first; if none clear it, the best few are shown
 anyway with their honest (low) score, so a thin search still returns
 something useful. Both model steps have a repair retry; if ranking fails
 entirely the board's top listings are shown unscored.
+
+**Tailor CV & cover letter.** Triggered per job, only when the user clicks it.
+`runTailor()` sends the CV plus that one listing's title/company/location/
+snippet and asks the model for a rewritten CV, a cover letter, and 2-5 notes on
+what it changed and why. The prompt forbids inventing employers, titles,
+dates, or skills — it may only reorder, re-emphasize, and tighten wording, and
+must address a real gap honestly rather than paper over it. Results render
+inline on the job card as read-only, copyable text blocks; nothing is saved
+server-side.
 
 **Analyse fit.** The model is asked for a single JSON object matching
 `analysisResultSchema`; the reply is stripped of markdown fencing, `JSON.parse`d,
