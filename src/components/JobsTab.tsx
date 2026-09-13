@@ -14,18 +14,27 @@ used by 40k users, led migration from CRA to Vite, mentored two juniors.
 Skills: React, TypeScript, Redux, Jest, REST APIs, Figma. BSc Computer Science.
 Based in Manchester, UK. Open to remote.`;
 
+// Countries Adzuna indexes (used when JOBS_PROVIDER resolves to Adzuna; other
+// sources search on the location text instead).
 const COUNTRIES: [string, string][] = [
   ["", "Any / board default"],
-  ["us", "United States"],
-  ["gb", "United Kingdom"],
-  ["ca", "Canada"],
   ["au", "Australia"],
-  ["de", "Germany"],
+  ["at", "Austria"],
+  ["br", "Brazil"],
+  ["ca", "Canada"],
   ["fr", "France"],
-  ["nl", "Netherlands"],
+  ["de", "Germany"],
   ["in", "India"],
+  ["it", "Italy"],
+  ["mx", "Mexico"],
+  ["nl", "Netherlands"],
+  ["nz", "New Zealand"],
+  ["pl", "Poland"],
   ["sg", "Singapore"],
   ["za", "South Africa"],
+  ["es", "Spain"],
+  ["gb", "United Kingdom"],
+  ["us", "United States"],
 ];
 
 const LOADING_STEPS = [
