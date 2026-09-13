@@ -1,7 +1,14 @@
 # CV Coach
 
-An AI-powered web app with two modes. Paste (or upload as PDF) your **CV** —
-plus a **job description** for the first mode:
+An AI-powered web app. The primary flow: **upload your CV as a PDF** and find
+live job vacancies that fit it. A secondary mode compares your CV against one
+specific job description.
+
+**Find jobs** (default, home tab) — CV vs. the open market: drop in a PDF (or
+paste text), and the model distills your CV into a search, pulls live
+vacancies from a job board (The Muse by default — no key — or Adzuna /
+JSearch), and scores each listing against your background with a one-line
+reason it fits.
 
 **Analyse fit** — CV vs. one job description:
 
@@ -12,11 +19,6 @@ plus a **job description** for the first mode:
 - a phased **prep plan**,
 - **practice questions** (behavioural / technical / role-specific) with an answer framework for each,
 - **CV tweaks** targeted at this role.
-
-**Find jobs** — CV vs. the open market: the model distills your CV into a
-search, pulls live vacancies from a job board (The Muse by default — no key —
-or Adzuna / JSearch), and scores each listing against your background with a
-one-line reason it fits.
 
 No accounts, no database — each request is self-contained.
 
@@ -69,7 +71,8 @@ src/
     api/extract/route.ts     # POST multipart: PDF file → { text } (size/page guards)
     api/jobs/route.ts        # POST: validate → findJobs → ranked listings
   components/
-    Field.tsx                # textarea + "Upload PDF" control (shared)
+    PdfCvInput.tsx           # primary CV input for "Find jobs": PDF dropzone first, paste as fallback
+    Field.tsx                # textarea + "Upload PDF" control, used by "Analyse fit"
     AnalyseTab.tsx           # "Analyse fit" form + loading + results
     JobsTab.tsx              # "Find jobs" form + loading
     AnalysisView.tsx         # renders the fit analysis
@@ -93,22 +96,25 @@ src/
       run.ts                 # distill CV → search → rank listings against the CV
 ```
 
+**Find jobs.** `findJobs()` runs three steps: (1) the model distills the CV into
+job titles + keywords, (2) the configured `JobSource` queries the board and
+normalises results into `JobListing`s, (3) the model scores every listing
+0–100 against the CV and writes a one-line reason. Listings above a floor
+score are returned, best first; if none clear it, the best few are shown
+anyway with their honest (low) score, so a thin search still returns
+something useful. Both model steps have a repair retry; if ranking fails
+entirely the board's top listings are shown unscored.
+
 **Analyse fit.** The model is asked for a single JSON object matching
 `analysisResultSchema`; the reply is stripped of markdown fencing, `JSON.parse`d,
 and validated with Zod. On failure the model is asked once to repair its output.
 
-**Find jobs.** `findJobs()` runs three steps: (1) the model distills the CV into
-job titles + keywords, (2) the configured `JobSource` queries the board and
-normalises results into `JobListing`s, (3) the model scores each listing 0–100
-against the CV and writes a one-line reason. Listings scoring ≥ 45 are returned,
-best first. Both model steps have a repair retry; if ranking fails entirely the
-board's top listings are shown unscored.
-
-**PDF upload.** Each of the CV and job-description fields has an *Upload PDF*
-control. The file is posted to `/api/extract`, which rejects non-PDFs, files
-over 10 MB, and PDFs over 30 pages, then extracts text with `unpdf` and returns
-it for the user to review and edit. Image-only scans (no text layer) are
-rejected with a message to paste the text instead.
+**PDF upload.** `PdfCvInput` (the "Find jobs" CV field) leads with a
+drag-and-drop dropzone; "Analyse fit" uses `Field`, a textarea with an *Upload
+PDF* button. Both post the file to `/api/extract`, which rejects non-PDFs,
+files over 10 MB, and PDFs over 30 pages, then extracts text with `unpdf` and
+hands it back for the user to review and edit. Image-only scans (no text
+layer) are rejected with a message to paste the text instead.
 
 ## Scripts
 

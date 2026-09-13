@@ -5,21 +5,39 @@ import { AnalyseTab } from "@/components/AnalyseTab";
 import { JobsTab } from "@/components/JobsTab";
 import { Briefcase, Target } from "@/components/icons";
 
-type Tab = "analyse" | "jobs";
+type Tab = "jobs" | "analyse";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "analyse", label: "Analyse fit", icon: <Target className="h-4 w-4" /> },
   { id: "jobs", label: "Find jobs", icon: <Briefcase className="h-4 w-4" /> },
+  { id: "analyse", label: "Analyse fit", icon: <Target className="h-4 w-4" /> },
 ];
 
-const COPY: Record<Tab, string> = {
-  analyse:
-    "Paste your CV and a job description. Get an honest fit analysis, a phased prep plan, and practice questions tailored to both.",
-  jobs: "Paste your CV. We turn it into a search, pull live vacancies from a job board, and score each one against your background.",
+const HERO: Record<Tab, { title: React.ReactNode; sub: string; pills: string[] }> = {
+  jobs: {
+    title: (
+      <>
+        Find jobs that
+        <br className="hidden sm:block" /> fit your CV.
+      </>
+    ),
+    sub: "Upload your CV as a PDF. We turn it into a search, pull live vacancies from a job board, and score every listing against your background.",
+    pills: ["Upload a PDF", "Live vacancies", "Match score", "Why it fits"],
+  },
+  analyse: {
+    title: (
+      <>
+        See how your CV
+        <br className="hidden sm:block" /> stacks up.
+      </>
+    ),
+    sub: "Paste your CV and a job description. Get an honest fit analysis, a phased prep plan, and practice questions tailored to both.",
+    pills: ["Fit score", "Strengths & gaps", "Prep plan", "Practice questions"],
+  },
 };
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("analyse");
+  const [tab, setTab] = useState<Tab>("jobs");
+  const hero = HERO[tab];
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-14 sm:px-6">
@@ -34,12 +52,22 @@ export default function Home() {
         </div>
 
         <h1 className="mt-7 text-[2.5rem] font-semibold leading-[1.1] tracking-tight sm:text-5xl">
-          See how your CV
-          <br className="hidden sm:block" /> stacks up.
+          {hero.title}
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-          {COPY[tab]}
+          {hero.sub}
         </p>
+
+        <ul className="mt-5 flex flex-wrap gap-2">
+          {hero.pills.map((h) => (
+            <li
+              key={h}
+              className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 text-xs font-medium text-zinc-600 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400"
+            >
+              {h}
+            </li>
+          ))}
+        </ul>
       </header>
 
       <div
@@ -65,7 +93,7 @@ export default function Home() {
         ))}
       </div>
 
-      {tab === "analyse" ? <AnalyseTab /> : <JobsTab />}
+      {tab === "jobs" ? <JobsTab /> : <AnalyseTab />}
     </main>
   );
 }
