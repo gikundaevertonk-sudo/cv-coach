@@ -23,9 +23,17 @@ import {
 
 const MAX_LISTINGS_TO_RANK = 25;
 const MAX_RESULTS = 12;
-/** Drop listings the model scores below this; if that empties the list, keep the best few anyway. */
+/** "Worth applying" bar — listings at or above this are shown normally. */
 const SCORE_FLOOR = 30;
-const MIN_TO_SHOW = 5;
+/**
+ * Below the floor but at or above this, a listing is a real stretch but
+ * still worth surfacing as the closest available option. Below THIS, it
+ * isn't a recommendation at all — padding results out with a score of 5
+ * just because nothing better came back does more harm than an honest
+ * "nothing good matched" message.
+ */
+const MIN_USABLE_SCORE = 20;
+const MIN_TO_SHOW = 4;
 /** Keep on-site/board-side location results within this radius when a place is known. */
 const DEFAULT_RADIUS_KM = 25;
 
@@ -151,14 +159,21 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     .sort((a, b) => b.matchScore - a.matchScore);
 
   let jobs: RankedJob[];
+  let noGoodMatches = false;
   if (scored.length > 0) {
-    // Prefer listings above the floor; if none clear it, keep the best few so
-    // the user still sees the model's honest take.
+    // Prefer listings above the floor; short of that, still-usable stretch
+    // matches; below MIN_USABLE_SCORE isn't a recommendation, it's noise —
+    // don't pad the list out with it.
     const above = scored.filter((j) => j.matchScore >= SCORE_FLOOR);
-    jobs = (above.length > 0 ? above : scored.slice(0, MIN_TO_SHOW)).slice(
-      0,
-      MAX_RESULTS,
-    );
+    const usable = scored.filter((j) => j.matchScore >= MIN_USABLE_SCORE);
+    if (above.length > 0) {
+      jobs = above.slice(0, MAX_RESULTS);
+    } else if (usable.length > 0) {
+      jobs = usable.slice(0, MIN_TO_SHOW);
+    } else {
+      jobs = [];
+      noGoodMatches = true;
+    }
   } else {
     // Ranking failed entirely — show the board's top listings unscored.
     jobs = listings.slice(0, MAX_RESULTS).map((j) => ({
@@ -168,7 +183,22 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     }));
   }
 
-  return { jobs, query, notice, ...meta };
+  const finalNotice = noGoodMatches
+    ? [
+        notice,
+        `Found ${listings.length} listing${listings.length === 1 ? "" : "s"} for this search, but none scored well enough against your CV to recommend. Try a broader search, a different work-mode or job-board filter, or editing your CV.`,
+      ]
+        .filter((n): n is string => Boolean(n))
+        .join(" ")
+    : notice;
+
+  return {
+    jobs,
+    query,
+    notice: finalNotice,
+    weakOnly: noGoodMatches,
+    ...meta,
+  };
 }
 
 /**

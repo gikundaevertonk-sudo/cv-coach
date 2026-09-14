@@ -86,4 +86,10 @@ export type JobSearchResponse = {
   /** Set when a request couldn't be fully honoured, e.g. a publisher filter
    * that the active job source doesn't support. */
   notice?: string;
+  /**
+   * True when the board returned listings but none scored well enough to
+   * recommend — distinct from a plain zero-listing search, so the UI can
+   * say which actually happened instead of a generic "nothing found".
+   */
+  weakOnly?: boolean;
 };

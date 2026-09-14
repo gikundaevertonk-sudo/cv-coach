@@ -49,11 +49,18 @@ export function JobResults({
       <div className="mt-10 animate-rise flex flex-col gap-3">
         {data.notice ? <Notice text={data.notice} /> : null}
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
-          No live vacancies came back for{" "}
-          <span className="font-medium text-zinc-900 dark:text-zinc-100">
-            {query.what}
-          </span>
-          {query.where ? ` in ${query.where}` : ""}. Try widening the location,
+          {data.weakOnly ? (
+            "None of the listings for this search scored well enough against your CV to recommend — see the note above."
+          ) : (
+            <>
+              No live vacancies came back for{" "}
+              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                {query.what}
+              </span>
+              {query.where ? ` in ${query.where}` : ""}.
+            </>
+          )}{" "}
+          Try widening the location,
           switching the work-mode filter to &ldquo;Any&rdquo;, clearing the
           job-board filter, or editing your CV to surface different roles.
         </div>

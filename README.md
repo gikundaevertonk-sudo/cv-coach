@@ -113,12 +113,19 @@ back to the CV's own guess. The CV-distill call is skipped entirely when both
 a keyword search and a location are given, since nothing would be left for it
 to contribute. The job source then normalises results into `JobListing`s, and
 the model scores every listing 0–100 against the CV with a one-line reason.
-Listings above a floor score are returned, best first; if none clear it, the
-best few are shown anyway with their honest (low) score, so a thin search
-still returns something useful — searching a role that doesn't fit the CV
-(e.g. "Product Manager" against a frontend CV) correctly returns real
-listings, scored low, rather than nothing. Both model steps have a repair
-retry; if ranking fails entirely the board's top listings are shown unscored.
+Listings above a floor score (30) are returned, best first. Short of that,
+listings still above a minimum usable score (20) are shown as honest
+stretch options, capped at 4 — a thin search still returns something
+useful, e.g. searching a role that doesn't quite fit the CV correctly
+returns real listings, scored low. Below 20 is not a recommendation, just
+noise, so nothing is padded in to fill space: the response comes back with
+`jobs: []`, `weakOnly: true`, and a notice explaining that listings existed
+but none scored well, rather than silently forcing a handful of near-zero
+matches into view. (Earlier versions padded results out to 5 regardless of
+score — compounding filters like on-site-only + a narrow keyword search
+against a thin free-tier board made that visibly worse over time; this
+floor is the fix.) Both model steps have a repair retry; if ranking fails
+entirely the board's top listings are shown unscored.
 Every result is pulled from a verified job-board API — Adzuna, JSearch, or
 The Muse — never scraped.
 
