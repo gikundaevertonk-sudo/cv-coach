@@ -22,14 +22,26 @@ const LOADING_STEPS = [
   "Scoring each listing against your CV…",
 ];
 
+const PUBLISHERS = [
+  ["linkedin", "LinkedIn"],
+  ["indeed", "Indeed"],
+] as const;
+
 export function JobsTab() {
   const [cv, setCv] = useState("");
   const [location, setLocation] = useState("");
   const [country, setCountry] = useState("");
   const [remoteOnly, setRemoteOnly] = useState(false);
+  const [publishers, setPublishers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<JobSearchResponse | null>(null);
+
+  function togglePublisher(id: string) {
+    setPublishers((cur) =>
+      cur.includes(id) ? cur.filter((p) => p !== id) : [...cur, id],
+    );
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +57,7 @@ export function JobsTab() {
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cv, location, country, remoteOnly }),
+        body: JSON.stringify({ cv, location, country, remoteOnly, publishers }),
       });
       const body: ApiResponse = await res.json();
 
@@ -105,6 +117,35 @@ export function JobsTab() {
             />
             Remote roles only
           </label>
+
+          <div className="flex flex-col gap-1.5">
+            <p className="text-sm font-medium">
+              Only from{" "}
+              <span className="font-normal text-zinc-400">
+                — optional, needs the JSearch source
+              </span>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {PUBLISHERS.map(([id, label]) => {
+                const active = publishers.includes(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => togglePublisher(id)}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                      active
+                        ? "border-violet-600 bg-violet-600 text-white"
+                        : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-600"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <button

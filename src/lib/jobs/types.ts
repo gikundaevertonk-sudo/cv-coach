@@ -15,6 +15,11 @@ export type JobListing = {
   url: string;
   /** Source board id, e.g. "adzuna". */
   source: string;
+  /**
+   * The original site the listing was posted to, e.g. "LinkedIn", "Indeed" —
+   * only populated by aggregators that expose it (JSearch). Null elsewhere.
+   */
+  publisher: string | null;
 };
 
 export type JobQuery = {
@@ -27,6 +32,12 @@ export type JobQuery = {
   country?: string;
   /** Max listings to return. */
   limit?: number;
+  /**
+   * Restrict to listings originally published on one of these sites
+   * (case-insensitive, e.g. ["linkedin", "indeed"]). Only honoured by
+   * sources that carry publisher metadata (JSearch); others ignore it.
+   */
+  publishers?: string[];
 };
 
 export interface JobSource {

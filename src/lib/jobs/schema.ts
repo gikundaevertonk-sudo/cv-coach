@@ -18,6 +18,8 @@ export const jobsRequestSchema = z.object({
     .regex(/^[a-z]{2}$/, "Country must be a 2-letter code.")
     .optional()
     .or(z.literal("")),
+  /** Restrict to listings originally posted on these sites (JSearch only). */
+  publishers: z.array(z.enum(["linkedin", "indeed"])).max(2).optional(),
 });
 
 export type JobsRequest = z.infer<typeof jobsRequestSchema>;
@@ -56,4 +58,7 @@ export type JobSearchResponse = {
   source: string;
   provider: string;
   model: string;
+  /** Set when a request couldn't be fully honoured, e.g. a publisher filter
+   * that the active job source doesn't support. */
+  notice?: string;
 };

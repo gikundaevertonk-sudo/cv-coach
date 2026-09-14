@@ -109,6 +109,7 @@ export function createTheMuseSource(): JobSource {
             snippet: toSnippet(j.contents ?? ""),
             url: j.refs!.landing_page!,
             source: "themuse",
+            publisher: null,
           };
         })
         .filter((j) => {

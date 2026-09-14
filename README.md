@@ -112,6 +112,18 @@ anyway with their honest (low) score, so a thin search still returns
 something useful. Both model steps have a repair retry; if ranking fails
 entirely the board's top listings are shown unscored.
 
+**LinkedIn / Indeed.** Neither site offers a public API for this kind of
+integration, and scraping either one directly breaks their terms of service —
+this app does neither. What it does instead: JSearch (RapidAPI) aggregates
+Google for Jobs, which itself indexes postings originally published on
+LinkedIn, Indeed, Glassdoor, and others, and returns which site each one came
+from (`job_publisher`). The *Only from* toggles in "Find jobs" filter JSearch
+results down to just those two publishers. This only works when the resolved
+job source is JSearch (`RAPIDAPI_KEY` set); on any other source the response
+carries a `notice` explaining that and falls back to unfiltered results —
+never a silent no-op. Every listing also shows its originating publisher as a
+badge when the source provides one.
+
 **Tailor CV & cover letter.** Triggered per job, only when the user clicks it.
 `runTailor()` sends the CV plus that one listing's title/company/location/
 snippet and asks the model for a rewritten CV, a cover letter, and 2-5 notes on

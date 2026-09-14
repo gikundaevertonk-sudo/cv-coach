@@ -16,6 +16,14 @@ function ago(iso: string | null): string | null {
   return months < 12 ? `${months}mo ago` : `${Math.round(months / 12)}y ago`;
 }
 
+function Notice({ text }: { text: string }) {
+  return (
+    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+      {text}
+    </p>
+  );
+}
+
 function scoreStyle(score: number): string {
   if (score >= 80)
     return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300";
@@ -30,13 +38,17 @@ export function JobResults({ data, cv }: { data: JobSearchResponse; cv: string }
 
   if (jobs.length === 0) {
     return (
-      <div className="mt-10 animate-rise rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
-        No live vacancies came back for{" "}
-        <span className="font-medium text-zinc-900 dark:text-zinc-100">
-          {query.what}
-        </span>
-        {query.where ? ` in ${query.where}` : ""}. Try widening the location or
-        editing your CV to surface different roles.
+      <div className="mt-10 animate-rise flex flex-col gap-3">
+        {data.notice ? <Notice text={data.notice} /> : null}
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
+          No live vacancies came back for{" "}
+          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+            {query.what}
+          </span>
+          {query.where ? ` in ${query.where}` : ""}. Try widening the location,
+          clearing the job-board filter, or editing your CV to surface
+          different roles.
+        </div>
       </div>
     );
   }
@@ -52,6 +64,8 @@ export function JobResults({ data, cv }: { data: JobSearchResponse; cv: string }
           {query.where ? ` · ${query.where}` : ""} · via {data.source}
         </p>
       </div>
+
+      {data.notice ? <Notice text={data.notice} /> : null}
 
       {!scored ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
@@ -156,6 +170,11 @@ function JobCard({ job, cv }: { job: RankedJob; cv: string }) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+        {job.publisher ? (
+          <span className="rounded-md bg-sky-100 px-1.5 py-0.5 font-medium text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+            {job.publisher}
+          </span>
+        ) : null}
         {job.remote ? (
           <span className="rounded-md bg-teal-100 px-1.5 py-0.5 font-medium text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
             Remote

@@ -57,6 +57,7 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     where: where || undefined,
     remoteOnly: input.remoteOnly,
     country: input.country || undefined,
+    publishers: input.publishers,
     limit: MAX_LISTINGS_TO_RANK,
   });
 
@@ -69,9 +70,13 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     provider: provider.name,
     model: provider.model,
   };
+  const notice =
+    input.publishers && input.publishers.length > 0 && source.name !== "jsearch"
+      ? `Filtering by job board (${input.publishers.join(", ")}) needs the JSearch source — set RAPIDAPI_KEY. Showing unfiltered results from ${source.name} instead.`
+      : undefined;
 
   if (listings.length === 0) {
-    return { jobs: [], query, ...meta };
+    return { jobs: [], query, notice, ...meta };
   }
 
   // 3. Score + explain each listing (one repair retry).
@@ -117,5 +122,5 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     }));
   }
 
-  return { jobs, query, ...meta };
+  return { jobs, query, notice, ...meta };
 }

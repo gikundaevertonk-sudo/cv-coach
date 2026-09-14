@@ -83,6 +83,7 @@ export function createAdzunaSource(): JobSource {
             snippet: toSnippet(j.description ?? ""),
             url: j.redirect_url!,
             source: "adzuna",
+            publisher: null,
           };
         })
         .filter((j) => !query.remoteOnly || j.remote);
