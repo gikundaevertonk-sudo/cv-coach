@@ -75,29 +75,41 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
   // into one, or both combined with an explicit location.
   const { what, where } = await resolveQuery(provider, input);
 
-  // 2. Query the job board.
-  const listings = await source.search({
+  // 2. Query the job board. "onsite" has no board-side param — most boards
+  // only support asking for remote, not excluding it — so it's applied as a
+  // filter on the normalised results below instead.
+  const workMode = input.workMode ?? "any";
+  const raw = await source.search({
     what,
     where: where || undefined,
-    remoteOnly: input.remoteOnly,
+    remoteOnly: workMode === "remote",
     country: input.country || undefined,
     publishers: input.publishers,
     limit: MAX_LISTINGS_TO_RANK,
   });
+  // Excludes only listings with no physical-location option — a hybrid
+  // listing that offers both an office and remote still counts as on-site.
+  const listings =
+    workMode === "onsite" ? raw.filter((j) => !j.fullyRemote) : raw;
 
   const query = {
     what,
-    where: input.remoteOnly ? "Remote" : where || null,
+    where: workMode === "remote" ? "Remote" : where || null,
   };
   const meta = {
     source: source.name,
     provider: provider.name,
     model: provider.model,
   };
-  const notice =
+  const notices = [
     input.publishers && input.publishers.length > 0 && source.name !== "jsearch"
       ? `Filtering by job board (${input.publishers.join(", ")}) needs the JSearch source — set RAPIDAPI_KEY. Showing unfiltered results from ${source.name} instead.`
-      : undefined;
+      : null,
+    workMode === "onsite" && raw.length > 0 && listings.length === 0
+      ? `Every result for this search was fully remote with no office option, so the on-site/hybrid filter left nothing. Try "Any" or a different search.`
+      : null,
+  ].filter((n): n is string => n !== null);
+  const notice = notices.length > 0 ? notices.join(" ") : undefined;
 
   if (listings.length === 0) {
     return { jobs: [], query, notice, ...meta };

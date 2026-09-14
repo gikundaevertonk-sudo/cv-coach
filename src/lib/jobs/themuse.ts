@@ -98,12 +98,17 @@ export function createTheMuseSource(): JobSource {
           const locs = (j.locations ?? [])
             .map((l) => l.name)
             .filter(Boolean) as string[];
+          const isRemoteLoc = (l: string) => /flexible|remote/i.test(l);
           return {
             id: `themuse:${j.id}`,
             title: j.name!.trim(),
             company: j.company?.name?.trim() || null,
             location: locs.join(" / ") || null,
-            remote: locs.some((l) => /flexible|remote/i.test(l)),
+            remote: locs.some(isRemoteLoc),
+            // Many Muse listings post several offices *and* "Flexible /
+            // Remote" side by side — that's hybrid, not remote-only. Only
+            // count it fully remote when every listed location is.
+            fullyRemote: locs.length > 0 && locs.every(isRemoteLoc),
             salary: null,
             postedAt: j.publication_date ?? null,
             snippet: toSnippet(j.contents ?? ""),

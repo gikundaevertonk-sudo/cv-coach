@@ -121,6 +121,17 @@ retry; if ranking fails entirely the board's top listings are shown unscored.
 Every result is pulled from a verified job-board API — Adzuna, JSearch, or
 The Muse — never scraped.
 
+**Work mode.** *Any* (default) mixes remote and on-site/hybrid freely.
+*Remote only* asks the board for remote listings. *On-site / hybrid only*
+excludes a listing only when remote is its *sole* option (`fullyRemote` on
+`JobListing`) — a hybrid listing offering both an office and remote still
+counts as on-site, it isn't thrown out just because remote is also on the
+table. This distinction matters: The Muse in particular returns many listings
+with several offices *and* "Flexible / Remote" side by side, and naively
+excluding anything remote-tagged left "On-site only" with nothing. Sources
+that can't tell hybrid from fully-remote (a single location string, or a
+plain boolean with no further signal) set `fullyRemote` equal to `remote`.
+
 **LinkedIn / Indeed.** Neither site offers a public API for this kind of
 integration, and scraping either one directly breaks their terms of service —
 this app does neither. What it does instead: JSearch (RapidAPI) aggregates

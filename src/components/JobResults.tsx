@@ -46,8 +46,8 @@ export function JobResults({ data, cv }: { data: JobSearchResponse; cv: string }
             {query.what}
           </span>
           {query.where ? ` in ${query.where}` : ""}. Try widening the location,
-          clearing the job-board filter, or editing your CV to surface
-          different roles.
+          switching the work-mode filter to &ldquo;Any&rdquo;, clearing the
+          job-board filter, or editing your CV to surface different roles.
         </div>
       </div>
     );

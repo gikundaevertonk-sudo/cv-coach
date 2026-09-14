@@ -101,7 +101,10 @@ export function createJSearchSource(): JobSource {
               [j.job_city, j.job_state, j.job_country]
                 .filter(Boolean)
                 .join(", ") || null,
+            // JSearch's is_remote flag doesn't distinguish hybrid from
+            // fully-remote, so both fields carry the same value here.
             remote: Boolean(j.job_is_remote),
+            fullyRemote: Boolean(j.job_is_remote),
             salary: formatSalary(
               j.job_min_salary,
               j.job_max_salary,

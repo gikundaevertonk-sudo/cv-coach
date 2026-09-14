@@ -72,12 +72,19 @@ export function createAdzunaSource(): JobSource {
         .filter((j) => j.title && j.redirect_url)
         .map((j, i): JobListing => {
           const text = `${j.title ?? ""} ${j.description ?? ""}`.toLowerCase();
+          const mentionsRemote = /\bremote\b|work from home|\bwfh\b/.test(text);
+          const locationName = j.location?.display_name?.trim() || "";
+          // A named real place alongside a remote mention reads as
+          // hybrid/optional, not remote-only.
+          const namedRealPlace =
+            locationName.length > 0 && !/^(remote|anywhere)$/i.test(locationName);
           return {
             id: j.id ? `adzuna:${j.id}` : `adzuna:${i}`,
             title: j.title!.trim(),
             company: j.company?.display_name?.trim() || null,
             location: j.location?.display_name?.trim() || null,
-            remote: /\bremote\b|work from home|\bwfh\b/.test(text),
+            remote: mentionsRemote,
+            fullyRemote: mentionsRemote && !namedRealPlace,
             salary: formatSalary(j.salary_min, j.salary_max, "year"),
             postedAt: j.created ?? null,
             snippet: toSnippet(j.description ?? ""),

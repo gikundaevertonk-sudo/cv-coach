@@ -12,7 +12,8 @@ export const jobsRequestSchema = z.object({
   /** Explicit job title / keywords search — overrides the CV-derived query. */
   keywords: z.string().trim().max(200).optional().or(z.literal("")),
   location: z.string().trim().max(120).optional().or(z.literal("")),
-  remoteOnly: z.boolean().optional(),
+  /** "remote" and "onsite" are mutually exclusive; "any" (default) mixes both. */
+  workMode: z.enum(["any", "remote", "onsite"]).optional().default("any"),
   country: z
     .string()
     .trim()

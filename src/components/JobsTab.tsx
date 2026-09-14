@@ -27,12 +27,20 @@ const PUBLISHERS = [
   ["indeed", "Indeed"],
 ] as const;
 
+type WorkMode = "any" | "remote" | "onsite";
+
+const WORK_MODES: [WorkMode, string][] = [
+  ["any", "Any"],
+  ["remote", "Remote only"],
+  ["onsite", "On-site / hybrid only"],
+];
+
 export function JobsTab() {
   const [cv, setCv] = useState("");
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
   const [country, setCountry] = useState("");
-  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [workMode, setWorkMode] = useState<WorkMode>("any");
   const [publishers, setPublishers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +71,7 @@ export function JobsTab() {
           keywords,
           location,
           country,
-          remoteOnly,
+          workMode,
           publishers,
         }),
       });
@@ -138,15 +146,26 @@ export function JobsTab() {
             />
           </div>
 
-          <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={remoteOnly}
-              onChange={(e) => setRemoteOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-zinc-300 text-violet-600 accent-violet-600 dark:border-zinc-600"
-            />
-            Remote roles only
-          </label>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-sm font-medium">Work mode</p>
+            <div className="inline-flex w-fit flex-wrap gap-1 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950">
+              {WORK_MODES.map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={workMode === id}
+                  onClick={() => setWorkMode(id)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    workMode === id
+                      ? "bg-violet-600 text-white shadow-sm shadow-violet-600/30"
+                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <p className="text-sm font-medium">

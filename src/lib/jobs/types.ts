@@ -4,7 +4,17 @@ export type JobListing = {
   title: string;
   company: string | null;
   location: string | null;
+  /** True if remote is offered at all — including hybrid/either-or listings. */
   remote: boolean;
+  /**
+   * True only when remote is the SOLE option — no physical location choice.
+   * A listing offering both an office and remote is `remote: true,
+   * fullyRemote: false`. Used to filter for on-site/hybrid roles without
+   * excluding those. Sources that can't tell the difference (a single
+   * location string, or a boolean flag with no hybrid signal) set this
+   * equal to `remote`.
+   */
+  fullyRemote: boolean;
   /** Human-readable pay, e.g. "$120k–$150k / year". Null when the board omits it. */
   salary: string | null;
   /** ISO date string, or null. */
