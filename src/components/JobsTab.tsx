@@ -29,6 +29,7 @@ const PUBLISHERS = [
 
 export function JobsTab() {
   const [cv, setCv] = useState("");
+  const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
   const [country, setCountry] = useState("");
   const [remoteOnly, setRemoteOnly] = useState(false);
@@ -57,7 +58,14 @@ export function JobsTab() {
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cv, location, country, remoteOnly, publishers }),
+        body: JSON.stringify({
+          cv,
+          keywords,
+          location,
+          country,
+          remoteOnly,
+          publishers,
+        }),
       });
       const body: ApiResponse = await res.json();
 
@@ -81,6 +89,28 @@ export function JobsTab() {
       >
         <div className="flex flex-col gap-5">
           <PdfCvInput value={cv} onChange={setCv} />
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="keywords" className="text-sm font-medium">
+              Job title or keywords{" "}
+              <span className="font-normal text-zinc-400">
+                — optional, search a specific role
+              </span>
+            </label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+              <input
+                id="keywords"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                placeholder="e.g. Product Manager, DevOps Engineer, Growth Marketer"
+                className="w-full rounded-xl border border-zinc-300 bg-white py-2.5 pl-10 pr-3.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-violet-500"
+              />
+            </div>
+            <p className="text-xs text-zinc-400">
+              Leave blank and we&apos;ll work out a search from your CV instead.
+            </p>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -122,7 +152,7 @@ export function JobsTab() {
             <p className="text-sm font-medium">
               Only from{" "}
               <span className="font-normal text-zinc-400">
-                — optional, needs the JSearch source
+                — optional, narrows to a specific board
               </span>
             </p>
             <div className="flex flex-wrap gap-2">
@@ -175,6 +205,11 @@ export function JobsTab() {
               Load sample
             </button>
           </div>
+
+          <p className="text-xs text-zinc-400">
+            Every result comes from a verified job-board API — nothing here is
+            scraped.
+          </p>
         </div>
       </form>
 

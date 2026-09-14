@@ -9,6 +9,8 @@ export const jobsRequestSchema = z.object({
     .trim()
     .min(50, "Paste your CV text (at least a few sentences).")
     .max(MAX_FIELD_CHARS),
+  /** Explicit job title / keywords search — overrides the CV-derived query. */
+  keywords: z.string().trim().max(200).optional().or(z.literal("")),
   location: z.string().trim().max(120).optional().or(z.literal("")),
   remoteOnly: z.boolean().optional(),
   country: z

@@ -103,14 +103,23 @@ src/
       schema.ts prompt.ts run.ts           # tailor one CV + one job → { tailoredCv, coverLetter, notes }
 ```
 
-**Find jobs.** `findJobs()` runs three steps: (1) the model distills the CV into
-job titles + keywords, (2) the configured `JobSource` queries the board and
-normalises results into `JobListing`s, (3) the model scores every listing
-0–100 against the CV and writes a one-line reason. Listings above a floor
-score are returned, best first; if none clear it, the best few are shown
-anyway with their honest (low) score, so a thin search still returns
-something useful. Both model steps have a repair retry; if ranking fails
-entirely the board's top listings are shown unscored.
+**Find jobs.** `findJobs()` resolves what to search for, queries the
+configured `JobSource`, then scores what comes back. The *Job title or
+keywords* field is a direct search bar — when filled it's used verbatim as
+the query, taking priority over the CV. Left blank, the model distills the
+CV into titles + keywords instead; either way, a missing location also falls
+back to the CV's own guess. The CV-distill call is skipped entirely when both
+a keyword search and a location are given, since nothing would be left for it
+to contribute. The job source then normalises results into `JobListing`s, and
+the model scores every listing 0–100 against the CV with a one-line reason.
+Listings above a floor score are returned, best first; if none clear it, the
+best few are shown anyway with their honest (low) score, so a thin search
+still returns something useful — searching a role that doesn't fit the CV
+(e.g. "Product Manager" against a frontend CV) correctly returns real
+listings, scored low, rather than nothing. Both model steps have a repair
+retry; if ranking fails entirely the board's top listings are shown unscored.
+Every result is pulled from a verified job-board API — Adzuna, JSearch, or
+The Muse — never scraped.
 
 **LinkedIn / Indeed.** Neither site offers a public API for this kind of
 integration, and scraping either one directly breaks their terms of service —

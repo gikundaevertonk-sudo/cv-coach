@@ -22,22 +22,33 @@ const MAX_RESULTS = 12;
 const SCORE_FLOOR = 30;
 const MIN_TO_SHOW = 5;
 
-export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
-  const provider = getProvider();
-  const source = getJobSource();
+/**
+ * Work out what to search for. An explicit keyword search takes priority —
+ * it's the user directly saying "find me this" — and skips the CV-distill
+ * call entirely once nothing is left for it to contribute (a location was
+ * also given). Otherwise the CV is distilled into titles + keywords, and,
+ * when needed, a location guess.
+ */
+async function resolveQuery(
+  provider: ReturnType<typeof getProvider>,
+  input: JobsRequest,
+): Promise<{ what: string; where: string }> {
+  const manualQuery = (input.keywords || "").trim();
+  if (manualQuery && input.location) {
+    return { what: manualQuery, where: input.location.trim() };
+  }
 
-  // 1. CV -> search terms (one repair retry).
   const distillUser = buildDistillUser(input.cv);
-  const distillFirst = await provider.generateJSON({
+  const first = await provider.generateJSON({
     system: DISTILL_SYSTEM,
     user: distillUser,
     maxTokens: 500,
   });
-  let terms = parseModelJSON(distillFirst, searchTermsSchema);
+  let terms = parseModelJSON(first, searchTermsSchema);
   if (!terms) {
     const retry = await provider.generateJSON({
       system: DISTILL_SYSTEM,
-      user: `${distillUser}\n\n---\nYou previously replied:\n${distillFirst}\n\n${REPAIR_PROMPT}`,
+      user: `${distillUser}\n\n---\nYou previously replied:\n${first}\n\n${REPAIR_PROMPT}`,
       maxTokens: 500,
     });
     terms = parseModelJSON(retry, searchTermsSchema);
@@ -46,10 +57,23 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     throw new Error("Could not work out what to search for from that CV.");
   }
 
-  const what = [...terms.titles.slice(0, 3), ...terms.keywords.slice(0, 4)]
-    .join(" ")
-    .trim();
+  const what =
+    manualQuery ||
+    [...terms.titles.slice(0, 3), ...terms.keywords.slice(0, 4)]
+      .join(" ")
+      .trim();
   const where = (input.location || terms.locationGuess || "").trim();
+
+  return { what, where };
+}
+
+export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
+  const provider = getProvider();
+  const source = getJobSource();
+
+  // 1. Work out the search — an explicit keyword search, the CV distilled
+  // into one, or both combined with an explicit location.
+  const { what, where } = await resolveQuery(provider, input);
 
   // 2. Query the job board.
   const listings = await source.search({
