@@ -65,6 +65,11 @@ export function createJSearchSource(): JobSource {
         num_pages: wantPublishers.length > 0 ? "3" : "1",
       });
       if (query.remoteOnly) params.set("remote_jobs_only", "true");
+      // Radius around the location folded into `query`, in km. JSearch notes
+      // this is a hint to Google for Jobs, not strictly enforced.
+      if (query.where && query.radiusKm) {
+        params.set("radius", String(Math.round(query.radiusKm)));
+      }
 
       let res: Response;
       try {

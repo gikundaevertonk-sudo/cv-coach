@@ -8,6 +8,8 @@ export const tailorRequestSchema = z.object({
     .trim()
     .min(50, "Paste your CV text (at least a few sentences).")
     .max(MAX_FIELD_CHARS),
+  /** Skills the candidate has that the CV doesn't mention — usable, not invented. */
+  additionalSkills: z.string().trim().max(500).optional().or(z.literal("")),
   job: z.object({
     title: z.string().trim().min(1, "The job needs a title.").max(200),
     company: z.string().trim().max(200).nullable().optional(),

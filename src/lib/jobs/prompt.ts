@@ -1,5 +1,19 @@
 import type { JobListing } from "./types";
 
+function withSkills(cv: string, additionalSkills?: string): string {
+  const extra = additionalSkills?.trim();
+  if (!extra) return `CANDIDATE CV:\n"""\n${cv}\n"""`;
+  return `CANDIDATE CV:
+"""
+${cv}
+"""
+
+ADDITIONAL SKILLS THE CANDIDATE STATES THEY HAVE (real, provided directly by
+the candidate — not necessarily written in the CV above, but not invented
+either; weigh them the same as anything in the CV):
+${extra}`;
+}
+
 export const DISTILL_SYSTEM = `You turn a candidate's CV into search terms for a job board.
 
 Return a SINGLE JSON object, no markdown or commentary:
@@ -9,13 +23,10 @@ Return a SINGLE JSON object, no markdown or commentary:
   "locationGuess": string      // a city or country if the CV clearly implies one, else omit
 }
 
-Base every term on what the CV actually shows. Prefer the seniority the CV supports — do not inflate a mid-level CV to "Head of".`;
+Base every term on what the CV (and any stated additional skills) actually shows. Prefer the seniority the CV supports — do not inflate a mid-level CV to "Head of".`;
 
-export function buildDistillUser(cv: string): string {
-  return `CANDIDATE CV:
-"""
-${cv}
-"""
+export function buildDistillUser(cv: string, additionalSkills?: string): string {
+  return `${withSkills(cv, additionalSkills)}
 
 Produce the JSON object.`;
 }
@@ -37,7 +48,11 @@ Score EVERY listing you are given — do not drop any. Return a SINGLE JSON obje
 
 Use each listing's exact "id". "whyItFits" is one specific sentence — for a weak match, say plainly what is missing.`;
 
-export function buildRankUser(cv: string, jobs: JobListing[]): string {
+export function buildRankUser(
+  cv: string,
+  jobs: JobListing[],
+  additionalSkills?: string,
+): string {
   const lines = jobs
     .map((j) =>
       [
@@ -51,15 +66,35 @@ export function buildRankUser(cv: string, jobs: JobListing[]): string {
     )
     .join("\n\n---\n\n");
 
-  return `CANDIDATE CV:
-"""
-${cv}
-"""
+  return `${withSkills(cv, additionalSkills)}
 
 LISTINGS:
 ${lines}
 
 Score every listing and produce the JSON object.`;
+}
+
+export const ROLES_SYSTEM = `You extract distinct work-experience entries from a CV.
+
+List every distinct position the candidate has held — job, internship, or
+substantial freelance/volunteer role — most recent first, exactly as the CV
+describes it. Do not blend roles together or invent one that isn't there.
+
+Return a SINGLE JSON object, no markdown or commentary:
+{
+  "roles": [
+    { "title": string, "company": string, "period": string }
+    // "company" and "period" are omitted only if the CV truly doesn't say
+  ]
+}`;
+
+export function buildRolesUser(cv: string): string {
+  return `CANDIDATE CV:
+"""
+${cv}
+"""
+
+List every distinct role and produce the JSON object.`;
 }
 
 export const REPAIR_PROMPT = `Your previous reply was not valid JSON matching the required shape. Reply again with ONLY the corrected JSON object — no fences, no commentary.`;

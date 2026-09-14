@@ -12,8 +12,11 @@ type Status =
 
 /**
  * The primary CV input for job search: a PDF dropzone first, with "paste
- * text instead" as a fallback. Once there's content, it collapses to a
- * compact summary with Edit / Replace.
+ * text instead" as a fallback. A PDF upload (or an externally-set value,
+ * e.g. "Load sample") collapses to a compact summary with Edit / Replace.
+ * Paste mode keeps its textarea visible the whole time it's typed into —
+ * collapsing the instant `value` goes non-empty would rip the textarea out
+ * from under a typing user after their first keystroke.
  */
 export function PdfCvInput({
   value,
@@ -84,6 +87,10 @@ export function PdfCvInput({
   }
 
   const reading = status.kind === "reading";
+  // Paste mode owns the textarea for as long as it's active, regardless of
+  // content — only the upload path (or an external set, e.g. "Load sample")
+  // shows the collapsed summary.
+  const showSummary = hasContent && !pasteMode;
 
   return (
     <div className="flex flex-col gap-2">
@@ -91,13 +98,15 @@ export function PdfCvInput({
         <label className="text-sm font-medium">Your CV</label>
         {hasContent && !reading ? (
           <div className="flex items-center gap-3 text-xs">
-            <button
-              type="button"
-              onClick={() => setEditing((v) => !v)}
-              className="font-medium text-zinc-500 underline underline-offset-4 hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              {editing ? "Hide text" : "Edit text"}
-            </button>
+            {!pasteMode ? (
+              <button
+                type="button"
+                onClick={() => setEditing((v) => !v)}
+                className="font-medium text-zinc-500 underline underline-offset-4 hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                {editing ? "Hide text" : "Edit text"}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={replace}
@@ -117,67 +126,25 @@ export function PdfCvInput({
         onChange={onPickFile}
       />
 
-      {!hasContent ? (
-        pasteMode ? (
-          <div className="relative">
-            <textarea
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="Paste your CV as plain text."
-              rows={8}
-              autoFocus
-              className="w-full resize-y rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm leading-relaxed outline-none transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-violet-500"
-            />
-            <span
-              className={`pointer-events-none absolute bottom-2.5 right-2.5 rounded bg-white/80 px-1 text-[11px] tabular-nums backdrop-blur dark:bg-zinc-950/80 ${
-                over ? "text-rose-500" : "text-zinc-400"
-              }`}
-            >
-              {value.length.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}
-            </span>
-          </div>
-        ) : (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            onClick={() => !reading && inputRef.current?.click()}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
-            }}
-            aria-label="Upload your CV as a PDF"
-            className={`flex cursor-pointer flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-              dragOver
-                ? "border-violet-500 bg-violet-50 dark:border-violet-500 dark:bg-violet-950/20"
-                : "border-zinc-300 bg-zinc-50/60 hover:border-violet-400 hover:bg-violet-50/40 dark:border-zinc-700 dark:bg-zinc-900/30 dark:hover:border-violet-600 dark:hover:bg-violet-950/10"
+      {pasteMode ? (
+        <div className="relative">
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Paste your CV as plain text."
+            rows={8}
+            autoFocus
+            className="w-full resize-y rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm leading-relaxed outline-none transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-violet-500"
+          />
+          <span
+            className={`pointer-events-none absolute bottom-2.5 right-2.5 rounded bg-white/80 px-1 text-[11px] tabular-nums backdrop-blur dark:bg-zinc-950/80 ${
+              over ? "text-rose-500" : "text-zinc-400"
             }`}
           >
-            {reading ? (
-              <>
-                <Spinner className="h-6 w-6 text-violet-600" />
-                <p className="text-sm font-medium">
-                  Reading {(status as { name: string }).name}…
-                </p>
-              </>
-            ) : (
-              <>
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
-                  <Upload className="h-5 w-5" />
-                </span>
-                <p className="text-sm font-semibold">
-                  Drop your CV here, or click to upload
-                </p>
-                <p className="text-xs text-zinc-500">PDF, up to 10 MB</p>
-              </>
-            )}
-          </div>
-        )
-      ) : (
+            {value.length.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}
+          </span>
+        </div>
+      ) : showSummary ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
           <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-emerald-800 dark:text-emerald-300">
             <Check className="h-4 w-4 shrink-0" />
@@ -189,9 +156,49 @@ export function PdfCvInput({
             </span>
           </p>
         </div>
+      ) : (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => !reading && inputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+          }}
+          aria-label="Upload your CV as a PDF"
+          className={`flex cursor-pointer flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+            dragOver
+              ? "border-violet-500 bg-violet-50 dark:border-violet-500 dark:bg-violet-950/20"
+              : "border-zinc-300 bg-zinc-50/60 hover:border-violet-400 hover:bg-violet-50/40 dark:border-zinc-700 dark:bg-zinc-900/30 dark:hover:border-violet-600 dark:hover:bg-violet-950/10"
+          }`}
+        >
+          {reading ? (
+            <>
+              <Spinner className="h-6 w-6 text-violet-600" />
+              <p className="text-sm font-medium">
+                Reading {(status as { name: string }).name}…
+              </p>
+            </>
+          ) : (
+            <>
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
+                <Upload className="h-5 w-5" />
+              </span>
+              <p className="text-sm font-semibold">
+                Drop your CV here, or click to upload
+              </p>
+              <p className="text-xs text-zinc-500">PDF, up to 10 MB</p>
+            </>
+          )}
+        </div>
       )}
 
-      {!hasContent && !pasteMode ? (
+      {!pasteMode && !hasContent ? (
         <button
           type="button"
           onClick={() => setPasteMode(true)}
@@ -200,10 +207,10 @@ export function PdfCvInput({
           Or paste your CV as text
         </button>
       ) : null}
-      {!hasContent && pasteMode ? (
+      {pasteMode ? (
         <button
           type="button"
-          onClick={() => setPasteMode(false)}
+          onClick={replace}
           className="self-center text-xs font-medium text-zinc-500 underline underline-offset-4 hover:text-zinc-900 dark:hover:text-zinc-100"
         >
           Upload a PDF instead
@@ -217,7 +224,7 @@ export function PdfCvInput({
         </p>
       ) : null}
 
-      {hasContent && editing ? (
+      {showSummary && editing ? (
         <div className="relative">
           <textarea
             value={value}

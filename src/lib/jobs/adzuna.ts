@@ -48,6 +48,11 @@ export function createAdzunaSource(): JobSource {
         "content-type": "application/json",
       });
       if (query.where) params.set("where", query.where);
+      // Radius search around `where`, in km — keeps on-site results close by
+      // instead of scattered across the whole country.
+      if (query.where && query.radiusKm) {
+        params.set("distance", String(Math.round(query.radiusKm)));
+      }
 
       const url = `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params}`;
 

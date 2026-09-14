@@ -3,7 +3,7 @@ import type { TailorRequest } from "./schema";
 export const SYSTEM_PROMPT = `You are a career coach who tailors a candidate's CV and writes a cover letter for ONE specific job.
 
 Ground rules:
-- Use ONLY what is in the candidate's CV. Never invent employers, titles, dates, skills, degrees, or achievements that are not there.
+- Use ONLY what is in the candidate's CV, plus any "additional skills" the candidate explicitly states below (those are real, self-reported — treat them the same as the CV, just don't invent employers, dates, or achievements around them that weren't given). Never invent anything beyond these two sources.
 - Keep every fact unchanged (company names, job titles, dates, metrics). You may reorder sections/bullets, rewrite a summary line, tighten wording, and cut detail that is irrelevant to this job to make room for what matters.
 - The cover letter is 3-4 short paragraphs: an opening naming the role and why the candidate is applying, 1-2 paragraphs connecting 2-3 concrete things from the CV to what the job actually asks for, and a short closing with a clear call to action. Professional but not stiff — no generic filler like "I am a hard worker".
 - Sign the letter with the candidate's name if it appears in the CV, otherwise "[Your name]". Address it "Dear Hiring Manager," unless a specific name is given.
@@ -27,11 +27,17 @@ export function buildUserMessage(input: TailorRequest): string {
     .filter(Boolean)
     .join("\n");
 
+  const skills = input.additionalSkills?.trim();
+
   return `CANDIDATE CV:
 """
 ${input.cv}
 """
-
+${
+    skills
+      ? `\nADDITIONAL SKILLS THE CANDIDATE STATES THEY HAVE (not in the CV above, but real and self-reported):\n${skills}\n`
+      : ""
+  }
 TARGET JOB:
 ${jobLines}
 

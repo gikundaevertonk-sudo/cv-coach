@@ -2,15 +2,19 @@ import { z } from "zod";
 import { MAX_FIELD_CHARS } from "@/lib/analysis/schema";
 import type { JobListing } from "./types";
 
+const cvField = z
+  .string()
+  .trim()
+  .min(50, "Paste your CV text (at least a few sentences).")
+  .max(MAX_FIELD_CHARS);
+
 /** What the browser sends to /api/jobs. */
 export const jobsRequestSchema = z.object({
-  cv: z
-    .string()
-    .trim()
-    .min(50, "Paste your CV text (at least a few sentences).")
-    .max(MAX_FIELD_CHARS),
+  cv: cvField,
   /** Explicit job title / keywords search — overrides the CV-derived query. */
   keywords: z.string().trim().max(200).optional().or(z.literal("")),
+  /** Skills the candidate has that the CV doesn't mention — used alongside it. */
+  additionalSkills: z.string().trim().max(500).optional().or(z.literal("")),
   location: z.string().trim().max(120).optional().or(z.literal("")),
   /** "remote" and "onsite" are mutually exclusive; "any" (default) mixes both. */
   workMode: z.enum(["any", "remote", "onsite"]).optional().default("any"),
@@ -35,6 +39,24 @@ export const searchTermsSchema = z.object({
 });
 
 export type SearchTerms = z.infer<typeof searchTermsSchema>;
+
+/** What the browser sends to /api/jobs/experience. */
+export const experienceRequestSchema = z.object({ cv: cvField });
+export type ExperienceRequest = z.infer<typeof experienceRequestSchema>;
+
+/** One distinct position lifted from the CV, in the candidate's own words. */
+export const workRoleSchema = z.object({
+  title: z.string().min(1),
+  company: z.string().optional(),
+  period: z.string().optional(),
+});
+export type WorkRole = z.infer<typeof workRoleSchema>;
+
+/** Model step — every distinct role found in the CV, most recent first. */
+export const experienceSchema = z.object({
+  roles: z.array(workRoleSchema).min(1).max(10),
+});
+export type Experience = z.infer<typeof experienceSchema>;
 
 /** Model step 2 — a fit score + reason per listing. */
 export const rankingSchema = z.object({

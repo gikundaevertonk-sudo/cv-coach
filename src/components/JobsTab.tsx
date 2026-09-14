@@ -5,7 +5,7 @@ import { CountrySelect } from "@/components/CountrySelect";
 import { PdfCvInput } from "@/components/PdfCvInput";
 import { JobResults } from "@/components/JobResults";
 import { ArrowRight, Search, Spinner, Warning } from "@/components/icons";
-import type { JobSearchResponse } from "@/lib/jobs/schema";
+import type { JobSearchResponse, WorkRole } from "@/lib/jobs/schema";
 
 type ApiResponse = JobSearchResponse | { error: string };
 
@@ -35,13 +35,21 @@ const WORK_MODES: [WorkMode, string][] = [
   ["onsite", "On-site / hybrid only"],
 ];
 
+type RolesState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "done"; roles: WorkRole[] };
+
 export function JobsTab() {
   const [cv, setCv] = useState("");
   const [keywords, setKeywords] = useState("");
+  const [additionalSkills, setAdditionalSkills] = useState("");
   const [location, setLocation] = useState("");
   const [country, setCountry] = useState("");
   const [workMode, setWorkMode] = useState<WorkMode>("any");
   const [publishers, setPublishers] = useState<string[]>([]);
+  const [roles, setRoles] = useState<RolesState>({ status: "idle" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<JobSearchResponse | null>(null);
@@ -50,6 +58,32 @@ export function JobsTab() {
     setPublishers((cur) =>
       cur.includes(id) ? cur.filter((p) => p !== id) : [...cur, id],
     );
+  }
+
+  async function loadRoles() {
+    if (!cv.trim()) return;
+    setRoles({ status: "loading" });
+    try {
+      const res = await fetch("/api/jobs/experience", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cv }),
+      });
+      const body: { roles?: WorkRole[]; error?: string } = await res.json();
+      if (!res.ok || !body.roles) {
+        setRoles({
+          status: "error",
+          message: body.error ?? "Could not read your work history.",
+        });
+        return;
+      }
+      setRoles({ status: "done", roles: body.roles });
+    } catch {
+      setRoles({
+        status: "error",
+        message: "Could not reach the server. Check your connection and try again.",
+      });
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -69,6 +103,7 @@ export function JobsTab() {
         body: JSON.stringify({
           cv,
           keywords,
+          additionalSkills,
           location,
           country,
           workMode,
@@ -116,7 +151,66 @@ export function JobsTab() {
               />
             </div>
             <p className="text-xs text-zinc-400">
-              Leave blank and we&apos;ll work out a search from your CV instead.
+              Leave blank and we&apos;ll work out a search from your CV
+              instead, or{" "}
+              <button
+                type="button"
+                onClick={loadRoles}
+                disabled={!cv.trim() || roles.status === "loading"}
+                className="font-medium text-violet-600 underline underline-offset-4 hover:text-violet-800 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-400 dark:hover:text-violet-200"
+              >
+                {roles.status === "loading"
+                  ? "reading your work history…"
+                  : "pick from your work history"}
+              </button>
+              .
+            </p>
+            {roles.status === "error" ? (
+              <p className="text-xs text-rose-500">{roles.message}</p>
+            ) : null}
+            {roles.status === "done" ? (
+              <div className="flex flex-wrap gap-2">
+                {roles.roles.map((r, i) => {
+                  const active = keywords === r.title;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setKeywords(r.title)}
+                      className={`rounded-full border px-3 py-1.5 text-left text-xs font-medium transition-colors ${
+                        active
+                          ? "border-violet-600 bg-violet-600 text-white"
+                          : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-600"
+                      }`}
+                    >
+                      {r.title}
+                      {r.company ? ` · ${r.company}` : ""}
+                      {r.period ? ` (${r.period})` : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="skills" className="text-sm font-medium">
+              Additional skills{" "}
+              <span className="font-normal text-zinc-400">
+                — optional, things your CV doesn&apos;t mention
+              </span>
+            </label>
+            <input
+              id="skills"
+              value={additionalSkills}
+              onChange={(e) => setAdditionalSkills(e.target.value)}
+              placeholder="e.g. Kubernetes, public speaking, conversational Spanish"
+              className="rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-violet-500"
+            />
+            <p className="text-xs text-zinc-400">
+              Used for matching and for Tailor CV &amp; cover letter — never
+              added to your CV text itself.
             </p>
           </div>
 
@@ -241,7 +335,9 @@ export function JobsTab() {
 
       {loading ? <SearchSkeleton /> : null}
 
-      {data ? <JobResults data={data} cv={cv} /> : null}
+      {data ? (
+        <JobResults data={data} cv={cv} additionalSkills={additionalSkills} />
+      ) : null}
     </>
   );
 }

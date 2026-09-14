@@ -72,6 +72,7 @@ src/
     api/analyze/route.ts     # POST: validate → runAnalysis → JSON
     api/extract/route.ts     # POST multipart: PDF file → { text } (size/page guards)
     api/jobs/route.ts        # POST: validate → findJobs → ranked listings
+    api/jobs/experience/route.ts   # POST { cv } → distinct roles found in it
     api/tailor/route.ts      # POST: validate → runTailor → tailored CV + cover letter
   components/
     PdfCvInput.tsx           # primary CV input for "Find jobs": PDF dropzone first, paste as fallback
@@ -120,6 +121,29 @@ listings, scored low, rather than nothing. Both model steps have a repair
 retry; if ranking fails entirely the board's top listings are shown unscored.
 Every result is pulled from a verified job-board API — Adzuna, JSearch, or
 The Muse — never scraped.
+
+**Geographic radius.** When a location is known (typed or CV-guessed),
+searches on Adzuna (`distance`) and JSearch (`radius`) are kept within 25 km
+of it by default, so "on-site" results land nearby instead of scattered
+across the whole country — both are real, documented parameters on those
+APIs, confirmed against their docs/SDKs. The Muse has no radius concept (a
+fixed vocabulary of location strings instead), so it's unaffected.
+
+**Additional skills.** A free-text field for anything true that the CV
+doesn't mention — self-reported, not extracted. It's folded into the CV
+context for search-term distillation, ranking, and Tailor CV & cover letter,
+explicitly labelled to the model as candidate-stated rather than part of the
+CV, so it can be used without licence to invent *around* it.
+
+**Work history as search options.** "Pick from your work history" calls
+`extractRoles()`, a dedicated model step that lists every distinct position
+literally described in the CV (title, company, period) — for a
+career-changer's CV this surfaces each past line of work as its own option,
+not just one blended AI guess. Click one to load it into the search bar. This
+also caught a real bug worth naming: `PdfCvInput`'s paste box used to collapse
+to a summary the instant its value went non-empty, which meant typing (not
+pasting) a CV lost the textarea after the first keystroke. Paste mode now
+keeps the textarea mounted for as long as it's active, regardless of content.
 
 **Work mode.** *Any* (default) mixes remote and on-site/hybrid freely.
 *Remote only* asks the board for remote listings. *On-site / hybrid only*

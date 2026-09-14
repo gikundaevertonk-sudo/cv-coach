@@ -43,6 +43,12 @@ export type JobQuery = {
   /** Max listings to return. */
   limit?: number;
   /**
+   * Keep results within this radius (km) of `where`. Only honoured by
+   * sources with a real radius search (Adzuna, JSearch); others ignore it
+   * and fall back to their own location matching.
+   */
+  radiusKm?: number;
+  /**
    * Restrict to listings originally published on one of these sites
    * (case-insensitive, e.g. ["linkedin", "indeed"]). Only honoured by
    * sources that carry publisher metadata (JSearch); others ignore it.

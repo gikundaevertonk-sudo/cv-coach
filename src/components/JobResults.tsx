@@ -32,7 +32,15 @@ function scoreStyle(score: number): string {
   return "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300";
 }
 
-export function JobResults({ data, cv }: { data: JobSearchResponse; cv: string }) {
+export function JobResults({
+  data,
+  cv,
+  additionalSkills,
+}: {
+  data: JobSearchResponse;
+  cv: string;
+  additionalSkills?: string;
+}) {
   const { jobs, query } = data;
   const scored = jobs.some((j) => j.matchScore > 0);
 
@@ -76,7 +84,12 @@ export function JobResults({ data, cv }: { data: JobSearchResponse; cv: string }
 
       <ul className="flex flex-col gap-3">
         {jobs.map((job) => (
-          <JobCard key={job.id} job={job} cv={cv} />
+          <JobCard
+            key={job.id}
+            job={job}
+            cv={cv}
+            additionalSkills={additionalSkills}
+          />
         ))}
       </ul>
 
@@ -95,7 +108,15 @@ type TailorState =
   | { status: "error"; message: string }
   | { status: "done"; tailoredCv: string; coverLetter: string; notes: string[] };
 
-function JobCard({ job, cv }: { job: RankedJob; cv: string }) {
+function JobCard({
+  job,
+  cv,
+  additionalSkills,
+}: {
+  job: RankedJob;
+  cv: string;
+  additionalSkills?: string;
+}) {
   const posted = ago(job.postedAt);
   const [tailor, setTailor] = useState<TailorState>({ status: "idle" });
   const [expanded, setExpanded] = useState(true);
@@ -108,6 +129,7 @@ function JobCard({ job, cv }: { job: RankedJob; cv: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cv,
+          additionalSkills,
           job: {
             title: job.title,
             company: job.company,

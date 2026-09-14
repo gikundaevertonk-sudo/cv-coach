@@ -5,15 +5,20 @@ import {
   DISTILL_SYSTEM,
   RANK_SYSTEM,
   REPAIR_PROMPT,
+  ROLES_SYSTEM,
   buildDistillUser,
   buildRankUser,
+  buildRolesUser,
 } from "./prompt";
 import {
+  experienceSchema,
   rankingSchema,
   searchTermsSchema,
+  type ExperienceRequest,
   type JobSearchResponse,
   type JobsRequest,
   type RankedJob,
+  type WorkRole,
 } from "./schema";
 
 const MAX_LISTINGS_TO_RANK = 25;
@@ -21,6 +26,8 @@ const MAX_RESULTS = 12;
 /** Drop listings the model scores below this; if that empties the list, keep the best few anyway. */
 const SCORE_FLOOR = 30;
 const MIN_TO_SHOW = 5;
+/** Keep on-site/board-side location results within this radius when a place is known. */
+const DEFAULT_RADIUS_KM = 25;
 
 /**
  * Work out what to search for. An explicit keyword search takes priority —
@@ -38,7 +45,7 @@ async function resolveQuery(
     return { what: manualQuery, where: input.location.trim() };
   }
 
-  const distillUser = buildDistillUser(input.cv);
+  const distillUser = buildDistillUser(input.cv, input.additionalSkills);
   const first = await provider.generateJSON({
     system: DISTILL_SYSTEM,
     user: distillUser,
@@ -77,7 +84,9 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
 
   // 2. Query the job board. "onsite" has no board-side param — most boards
   // only support asking for remote, not excluding it — so it's applied as a
-  // filter on the normalised results below instead.
+  // filter on the normalised results below instead. A known location also
+  // gets a radius, so on-site results land close by rather than scattered
+  // across the whole country/region.
   const workMode = input.workMode ?? "any";
   const raw = await source.search({
     what,
@@ -85,6 +94,7 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
     remoteOnly: workMode === "remote",
     country: input.country || undefined,
     publishers: input.publishers,
+    radiusKm: where ? DEFAULT_RADIUS_KM : undefined,
     limit: MAX_LISTINGS_TO_RANK,
   });
   // Excludes only listings with no physical-location option — a hybrid
@@ -116,7 +126,7 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
   }
 
   // 3. Score + explain each listing (one repair retry).
-  const rankUser = buildRankUser(input.cv, listings);
+  const rankUser = buildRankUser(input.cv, listings, input.additionalSkills);
   const rankFirst = await provider.generateJSON({
     system: RANK_SYSTEM,
     user: rankUser,
@@ -159,4 +169,35 @@ export async function findJobs(input: JobsRequest): Promise<JobSearchResponse> {
   }
 
   return { jobs, query, notice, ...meta };
+}
+
+/**
+ * Pulls every distinct role out of a CV so the user can pick one to search
+ * against directly, instead of only getting one blended AI guess.
+ */
+export async function extractRoles(input: ExperienceRequest): Promise<WorkRole[]> {
+  const provider = getProvider();
+  const user = buildRolesUser(input.cv);
+
+  const first = await provider.generateJSON({
+    system: ROLES_SYSTEM,
+    user,
+    maxTokens: 800,
+  });
+  let result = parseModelJSON(first, experienceSchema);
+
+  if (!result) {
+    const retry = await provider.generateJSON({
+      system: ROLES_SYSTEM,
+      user: `${user}\n\n---\nYou previously replied:\n${first}\n\n${REPAIR_PROMPT}`,
+      maxTokens: 800,
+    });
+    result = parseModelJSON(retry, experienceSchema);
+  }
+
+  if (!result) {
+    throw new Error("Could not read distinct roles out of that CV.");
+  }
+
+  return result.roles;
 }
